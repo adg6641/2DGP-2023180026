@@ -14,6 +14,9 @@ def draw_character(x, y):
 def draw_circle():
     pass
 
+def draw_rectangle():
+    pass
+
 while True:
     pass
 
