@@ -30,7 +30,8 @@ def draw_triangle():
 
 def draw_top():
     print("TOP")
-    pass
+    for x in range(50, 751, 5):
+        draw_character(x, 550)
 
 while True:
     draw_circle()
