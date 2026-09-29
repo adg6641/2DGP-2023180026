@@ -17,6 +17,9 @@ def draw_circle():
 def draw_rectangle():
     pass
 
+def draw_triangle():
+    pass
+
 while True:
     pass
 
