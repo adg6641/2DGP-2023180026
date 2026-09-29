@@ -3,6 +3,8 @@ from pico2d import *
 
 open_canvas(800, 600)
 
+import math
+
 character = load_image('character.png')
 
 def draw_character(x, y):
