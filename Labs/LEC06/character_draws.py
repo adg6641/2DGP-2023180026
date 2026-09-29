@@ -45,7 +45,8 @@ def draw_bottom():
 
 def draw_left():
     print("LEFT")
-    pass
+    for y in range(50, 550, 5):
+        draw_character(50, y)
 
 while True:
     draw_circle()
