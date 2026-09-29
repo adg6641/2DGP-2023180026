@@ -21,6 +21,8 @@ def draw_triangle():
     pass
 
 while True:
-    pass
+    draw_circle()
+    draw_rectangle()
+    draw_triangle()
 
 close_canvas()
