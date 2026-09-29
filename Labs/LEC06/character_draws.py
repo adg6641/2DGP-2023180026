@@ -12,13 +12,13 @@ def draw_character(x, y):
     delay(0.01)
 
 def draw_circle():
-    pass
+    print("CIRCLE")
 
 def draw_rectangle():
-    pass
+    print("RECTANGLE")
 
 def draw_triangle():
-    pass
+    print("TRIANGLE")
 
 while True:
     draw_circle()
