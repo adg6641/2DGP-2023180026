@@ -38,7 +38,7 @@ def draw_triangle():
 
 def draw_top():
     print("TOP")
-    for x in range(50, 751, 5):
+    for x in range(50, 750, 5):
         draw_character(x, 550)
 
 def draw_right():
