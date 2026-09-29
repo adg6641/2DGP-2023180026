@@ -43,6 +43,10 @@ def draw_bottom():
     for x in range(750, 50, -5):
         draw_character(x, 50)
 
+def draw_left():
+    print("LEFT")
+    pass
+
 while True:
     draw_circle()
     draw_rectangle()
