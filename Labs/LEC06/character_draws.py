@@ -19,6 +19,7 @@ def draw_circle():
         rad = math.radians(deg)
         x = 400 + 200 * math.cos(rad)
         y = 300 + 200 * math.sin(rad)
+        draw_character(x, y)
     pass
 
 def draw_rectangle():
