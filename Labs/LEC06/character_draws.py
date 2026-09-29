@@ -11,5 +11,8 @@ def draw_character(x, y):
     update_canvas()
     delay(0.01)
 
-draw_character(400, 300)
+clear_canvas()
+character.draw(400, 300)
+update_canvas()
+delay(1)
 close_canvas()
