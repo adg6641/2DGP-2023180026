@@ -32,6 +32,9 @@ def draw_rectangle():
 
 def draw_triangle():
     print("TRIANGLE")
+    draw_triangle_bottom()
+    draw_triangle_right()
+    draw_triangle_left()
 
 def draw_top():
     print("TOP")
