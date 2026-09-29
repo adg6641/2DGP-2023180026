@@ -35,7 +35,8 @@ def draw_top():
 
 def draw_right():
     print("RIGHT")
-    pass
+    for y in range(550, 50, -5):
+        draw_character(750, y)
 
 while True:
     draw_circle()
