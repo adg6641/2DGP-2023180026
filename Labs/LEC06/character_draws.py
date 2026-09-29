@@ -28,6 +28,10 @@ def draw_rectangle():
 def draw_triangle():
     print("TRIANGLE")
 
+def draw_top():
+    print("TOP")
+    pass
+
 while True:
     draw_circle()
     draw_rectangle()
