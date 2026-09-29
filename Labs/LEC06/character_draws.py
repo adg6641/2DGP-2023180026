@@ -33,6 +33,10 @@ def draw_top():
     for x in range(50, 751, 5):
         draw_character(x, 550)
 
+def draw_right():
+    print("RIGHT")
+    pass
+
 while True:
     draw_circle()
     draw_rectangle()
