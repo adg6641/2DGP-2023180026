@@ -24,6 +24,11 @@ def draw_circle():
 
 def draw_rectangle():
     print("RECTANGLE")
+    draw_top()
+    draw_right()
+    draw_bottom()
+    draw_left()
+    pass
 
 def draw_triangle():
     print("TRIANGLE")
