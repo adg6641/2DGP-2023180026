@@ -40,7 +40,8 @@ def draw_right():
 
 def draw_bottom():
     print("BOTTOM")
-    pass
+    for x in range(750, 50, -5):
+        draw_character(x, 50)
 
 while True:
     draw_circle()
