@@ -55,7 +55,8 @@ def draw_left():
 
 def draw_triangle_bottom():
     print("TRIANGLE_BOTTOM")
-    pass
+    for x in range(100, 700, 5):
+        draw_character(x, 100)
 
 def draw_triangle_right():
     print("TRIANGLE_RIGHT")
