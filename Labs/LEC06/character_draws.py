@@ -69,7 +69,12 @@ def draw_triangle_right():
 
 def draw_triangle_left():
     print("TRIANGLE_LEFT")
-    pass
+    n = 100
+    for step in range(n + 1):
+        t = step / n
+        x = 400 + (100 - 400) * t
+        y = 500 + (100 - 500) * t
+        draw_character(x, y)
 
 while True:
     draw_circle()
