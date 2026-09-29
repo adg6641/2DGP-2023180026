@@ -60,7 +60,12 @@ def draw_triangle_bottom():
 
 def draw_triangle_right():
     print("TRIANGLE_RIGHT")
-    pass
+    n = 100
+    for step in range(n + 1):
+        t = step / n
+        x = 700 + (400 - 700) * t
+        y = 100 + (500 - 100) * t
+        draw_character(x, y)
 
 def draw_triangle_left():
     print("TRIANGLE_LEFT")
