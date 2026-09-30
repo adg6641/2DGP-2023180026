@@ -10,7 +10,7 @@ frame = 0
 for x in range(0, 800, 5):
     clear_canvas()
     grass.draw(400, 30)
-    boy.clip_draw(
+    character.clip_draw(
         frame * 100, 0,
         100, 100, x, 90
     )
