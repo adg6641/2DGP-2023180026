@@ -37,6 +37,16 @@ class Animation:
         return len(self.frames) * self.frame_seconds
 
 
+def load_manifest(path=BASE_DIR / 'assets' / 'sprite_atlas.json'):
+    data = json.loads(Path(path).read_text(encoding='utf-8'))
+    animations = tuple(
+        Animation(item['name'], item['label'], item['frame_seconds'],
+                  tuple(Frame(**frame) for frame in item['frames']))
+        for item in data['animations']
+    )
+    return data, animations
+
+
 def main():
     import pico2d as p
     p.open_canvas(960, 640)
