@@ -150,15 +150,36 @@ def play_seconds(animation):
     return animation.cycle_seconds * REPEAT_COUNT
 
 
-def main():
+def run_viewer():
     import pico2d as p
-    p.open_canvas(960, 640)
+    data, animations = load_manifest()
+    validate_manifest(data, animations)
+    p.open_canvas(WINDOW_WIDTH, WINDOW_HEIGHT)
     try:
-        p.clear_canvas()
-        p.update_canvas()
-        p.delay(0.2)
+        sheet = load_sheet(p, data)
+        player = Playback(animations)
+        running = True
+        previous = time.perf_counter()
+        while running:
+            now = time.perf_counter()
+            player.update(now - previous)
+            previous = now
+            for event in p.get_events():
+                if event.type == p.SDL_QUIT or (event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE):
+                    running = False
+            if not running:
+                break
+            p.clear_canvas()
+            frame = player.animation.frames[player.frame_index]
+            draw_frame(sheet, frame, WINDOW_WIDTH / 2, FLOOR_Y, display_scale(frame))
+            p.update_canvas()
+            p.delay(0.005)
     finally:
         p.close_canvas()
+
+
+def main():
+    run_viewer()
 
 
 if __name__ == '__main__':
