@@ -83,6 +83,12 @@ def load_sheet(p, data):
     return sheet
 
 
+def clip_rectangle(frame, atlas_height):
+    # JSON/Pillow 좌표는 왼쪽 위, pico2d의 clip 좌표는 왼쪽 아래이다.
+    return (frame.x, atlas_height - frame.y - frame.height,
+            frame.width, frame.height)
+
+
 def main():
     import pico2d as p
     p.open_canvas(960, 640)
