@@ -89,6 +89,11 @@ def clip_rectangle(frame, atlas_height):
             frame.width, frame.height)
 
 
+def draw_frame(sheet, frame, x, y, scale=1.0):
+    sheet.clip_draw(*clip_rectangle(frame, sheet.h), x, y,
+                    round(frame.width * scale), round(frame.height * scale))
+
+
 def main():
     import pico2d as p
     p.open_canvas(960, 640)
