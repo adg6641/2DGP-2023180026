@@ -159,14 +159,18 @@ def run_viewer():
         sheet = load_sheet(p, data)
         player = Playback(animations)
         running = True
+        suspended = False
         previous = time.perf_counter()
         while running:
             now = time.perf_counter()
-            player.update(now - previous)
+            if not suspended:
+                player.update(now - previous)
             previous = now
             for event in p.get_events():
                 if event.type == p.SDL_QUIT or (event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE):
                     running = False
+                elif event.type == p.SDL_KEYDOWN and event.key == p.SDLK_SPACE:
+                    suspended = not suspended
             if not running:
                 break
             p.clear_canvas()
