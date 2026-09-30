@@ -47,6 +47,30 @@ def load_manifest(path=BASE_DIR / 'assets' / 'sprite_atlas.json'):
     return data, animations
 
 
+def validate_manifest(data, animations):
+    if data.get('schema_version') != 1:
+        raise ValueError('Unsupported sprite manifest schema')
+    width, height = data['size']
+    if not isinstance(width, int) or not isinstance(height, int) or min(width, height) <= 0:
+        raise ValueError('Atlas dimensions must be positive integers')
+    if len(animations) < 4:
+        raise ValueError('At least four animations are required')
+    if len({a.name for a in animations}) != len(animations):
+        raise ValueError('Animation names must be unique')
+    for animation in animations:
+        if not animation.frames or not math.isfinite(animation.frame_seconds) or animation.frame_seconds <= 0:
+            raise ValueError('Each animation needs frames and a positive frame duration')
+        for frame in animation.frames:
+            if any(not isinstance(v, int) for v in (frame.x, frame.y, frame.width, frame.height)):
+                raise ValueError('Frame bounds must use integer pixels')
+            if min(frame.x, frame.y) < 0 or min(frame.width, frame.height) <= 0:
+                raise ValueError('Invalid frame rectangle')
+            if frame.x + frame.width > width or frame.y + frame.height > height:
+                raise ValueError('Frame rectangle exceeds the atlas')
+            if not (0 <= frame.pivot_x <= frame.width and 0 <= frame.pivot_y <= frame.height):
+                raise ValueError('Frame pivot must lie inside its rectangle')
+
+
 def main():
     import pico2d as p
     p.open_canvas(960, 640)
