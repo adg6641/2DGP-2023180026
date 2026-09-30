@@ -209,7 +209,26 @@ def draw_bounds(p, fonts, sheet, frame, scale):
     fonts[1].draw(42, 112, f'SOURCE {frame.width}x{frame.height}   SCALE {scale:.2f}x', (245, 199, 111))
 
 
-def run_viewer():
+def capture_canvas(p, path):
+    # SDL 렌더러의 실제 결과를 읽어 smoke test의 시각 검증에 사용한다.
+    import ctypes
+    surface = p.SDL_CreateRGBSurfaceWithFormat(0, WINDOW_WIDTH, WINDOW_HEIGHT,
+                                               32, p.SDL_PIXELFORMAT_ARGB8888)
+    if not surface:
+        raise RuntimeError('Unable to allocate a screenshot surface')
+    try:
+        result = p.SDL_RenderReadPixels(p.renderer, None, surface.contents.format.contents.format,
+                                      surface.contents.pixels, surface.contents.pitch)
+        if result != 0:
+            raise RuntimeError('Unable to read the rendered canvas')
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        if p.SDL_SaveBMP(surface, str(path).encode('utf-8')) != 0:
+            raise RuntimeError('Unable to save the rendered canvas')
+    finally:
+        p.SDL_FreeSurface(surface)
+
+
+def run_viewer(smoke_seconds=None, screenshot=None):
     import pico2d as p
     data, animations = load_manifest()
     validate_manifest(data, animations)
@@ -221,12 +240,15 @@ def run_viewer():
         running = True
         suspended = False
         show_bounds = False
-        previous = time.perf_counter()
+        previous = started = time.perf_counter()
+        captured = False
         while running:
             now = time.perf_counter()
             if not suspended:
                 player.update(now - previous)
             previous = now
+            if smoke_seconds is not None and now - started >= smoke_seconds:
+                running = False
             for event in p.get_events():
                 if event.type == p.SDL_QUIT or (event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE):
                     running = False
@@ -247,6 +269,9 @@ def run_viewer():
             draw_frame(sheet, frame, WINDOW_WIDTH / 2, FLOOR_Y, display_scale(frame))
             if show_bounds:
                 draw_bounds(p, fonts, sheet, frame, display_scale(frame))
+            if screenshot and not captured:
+                capture_canvas(p, screenshot)
+                captured = True
             p.update_canvas()
             p.delay(0.005)
     finally:
@@ -254,7 +279,21 @@ def run_viewer():
 
 
 def main():
-    run_viewer()
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--smoke-seconds', type=float, help='Run an automated rendering check and exit')
+    parser.add_argument('--screenshot', type=Path, help='Save the first rendered canvas to a BMP')
+    parser.add_argument('--validate', action='store_true', help='Validate the atlas without opening a window')
+    args = parser.parse_args()
+    if args.smoke_seconds is not None and (not math.isfinite(args.smoke_seconds) or args.smoke_seconds <= 0):
+        parser.error('--smoke-seconds must be finite and positive')
+    if args.validate:
+        data, animations = load_manifest()
+        validate_manifest(data, animations)
+        for action in animations:
+            print(f'{action.label}: {len(action.frames)} frames, {play_seconds(action):.2f}s playback + 1.00s rest')
+    else:
+        run_viewer(args.smoke_seconds, args.screenshot)
 
 
 if __name__ == '__main__':
