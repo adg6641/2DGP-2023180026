@@ -122,10 +122,18 @@ class Playback:
     def frame_index(self):
         return int(self.elapsed / self.animation.frame_seconds) % len(self.animation.frames)
 
+    @property
+    def completed_repeats(self):
+        return min(REPEAT_COUNT, int(self.elapsed / self.animation.cycle_seconds))
+
     def update(self, seconds):
         if not math.isfinite(seconds) or seconds < 0:
             raise ValueError('Elapsed time must be finite and nonnegative')
         self.elapsed += seconds
+
+
+def play_seconds(animation):
+    return animation.cycle_seconds * REPEAT_COUNT
 
 
 def main():
