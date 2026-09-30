@@ -3,6 +3,18 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 
+from dataclasses import dataclass
+import json
+import math
+import time
+
+WINDOW_WIDTH = 960
+WINDOW_HEIGHT = 640
+REPEAT_COUNT = 5
+REST_SECONDS = 1.0
+FLOOR_Y = 88
+
+
 def main():
     import pico2d as p
     p.open_canvas(960, 640)
