@@ -74,18 +74,62 @@ class RubricTests(unittest.TestCase):
         self.assertAlmostEqual(small.elapsed, large.elapsed)
 
     def test_every_character_is_large_and_inside_the_stage(self):
-        for action in self.animations:
-            for frame in action.frames:
+        player = viewer.Playback(self.animations)
+        for index, action in enumerate(self.animations):
+            player.animation_index = index
+            for frame_index, frame in enumerate(action.frames):
+                player.elapsed = (frame_index + 0.5) * action.frame_seconds
                 scale = viewer.display_scale(frame)
                 self.assertGreaterEqual(frame.height * scale, viewer.WINDOW_HEIGHT * 0.5)
-                left = viewer.WINDOW_WIDTH / 2 - frame.pivot_x * scale
-                baseline = viewer.frame_baseline(frame)
+                x, baseline = viewer.character_position(player)
+                left = x - frame.pivot_x * scale
                 self.assertGreaterEqual(left, 24)
                 self.assertLessEqual(left + frame.width * scale, viewer.WINDOW_WIDTH - 24)
                 self.assertGreaterEqual(baseline, viewer.FLOOR_Y)
                 self.assertLessEqual(baseline + frame.height * scale, viewer.WINDOW_HEIGHT - 122 + 1e-6)
-                if frame.offset_y == 0:
-                    self.assertAlmostEqual(baseline + frame.height * scale / 2, viewer.WINDOW_HEIGHT / 2)
+
+    def test_rightward_motion_speed_jump_and_attack_lunge(self):
+        walk = viewer.Playback(self.animations)
+        run = viewer.Playback(self.animations)
+        run.animation_index = 1
+        start_x = viewer.character_position(walk)[0]
+        walk.update(.25)
+        run.update(.25)
+        self.assertGreater(viewer.character_position(walk)[0], start_x)
+        self.assertGreater(viewer.character_position(run)[0], viewer.character_position(walk)[0])
+        jump = viewer.Playback(self.animations)
+        jump.animation_index = 2
+        jump.elapsed = jump.animation.cycle_seconds * 3 / 7
+        self.assertGreater(viewer.character_position(jump)[1], viewer.FLOOR_Y + 60)
+        jump.elapsed = jump.animation.cycle_seconds * 6 / 7
+        self.assertEqual(viewer.character_position(jump)[1], viewer.FLOOR_Y)
+        attack = viewer.Playback(self.animations)
+        attack.animation_index = 3
+        attack.elapsed = attack.animation.cycle_seconds * .2
+        self.assertEqual(viewer.character_position(attack)[0], start_x)
+        attack.elapsed = attack.animation.cycle_seconds * .7
+        self.assertGreater(viewer.character_position(attack)[0], start_x + 40)
+
+    def test_motion_stays_inside_canvas_and_freezes_during_rest(self):
+        player = viewer.Playback(self.animations)
+        period = sum(viewer.play_seconds(a) + viewer.REST_SECONDS for a in self.animations)
+        for _ in range(math.ceil(period * 60) * 2):
+            x, y = viewer.character_position(player)
+            frame = player.animation.frames[player.frame_index]
+            scale = viewer.display_scale(frame)
+            self.assertGreaterEqual(x - frame.pivot_x * scale, 24 - 1e-6)
+            self.assertLessEqual(x + (frame.width - frame.pivot_x) * scale, viewer.WINDOW_WIDTH - 24 + 1e-6)
+            self.assertGreaterEqual(y, viewer.FLOOR_Y)
+            self.assertLessEqual(y + frame.height * scale, viewer.WINDOW_HEIGHT - 122 + 1e-6)
+            player.update(1 / 60)
+        for index, action in enumerate(self.animations):
+            player.animation_index = index
+            player.elapsed = viewer.play_seconds(action)
+            position = viewer.character_position(player)
+            player.update(.5)
+            self.assertEqual(viewer.character_position(player), position)
+        self.assertEqual(viewer.character_position(viewer.Playback(self.animations)),
+                         (viewer.movement_bounds(self.animations)[0], viewer.FLOOR_Y))
 
     def test_clip_coordinates_use_bottom_origin(self):
         frame = viewer.Frame(20, 30, 60, 80, 30, 80)

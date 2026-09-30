@@ -12,8 +12,10 @@ WINDOW_WIDTH = 960
 WINDOW_HEIGHT = 640
 REPEAT_COUNT = 5
 REST_SECONDS = 1.0
-# 높이 53%로 확대된 캐릭터의 중심이 화면 중앙에 오도록 발밑 기준을 둔다.
-FLOOR_Y = WINDOW_HEIGHT * (1 - 0.53) / 2
+# 중앙 캔버스 영역 안에서 오른쪽으로 이동하고 점프할 공간을 확보한다.
+FLOOR_Y = 95
+MOVEMENT_SPEEDS = {'walk': 100.0, 'run': 180.0, 'jump': 120.0}
+ATTACK_STEP_PIXELS = 60.0
 
 
 @dataclass(frozen=True)
@@ -110,11 +112,40 @@ def display_scale(frame):
     return scale
 
 
-def frame_baseline(frame):
-    # 점프 프레임은 원본 시트의 높이 차이를 살리되 상단 상태 표시 영역 안으로 제한한다.
-    scale = display_scale(frame)
-    available = WINDOW_HEIGHT - 122 - FLOOR_Y - frame.height * scale
-    return FLOOR_Y + min(frame.offset_y * scale, max(0.0, available))
+def movement_bounds(animations):
+    """모든 포즈와 칼/잔상이 캔버스 안에 들어오는 이동 범위를 구한다."""
+    frames = [frame for action in animations for frame in action.frames]
+    left = 24 + max(frame.pivot_x * display_scale(frame) for frame in frames)
+    right = WINDOW_WIDTH - 24 - max(
+        (frame.width - frame.pivot_x) * display_scale(frame) for frame in frames)
+    if right <= left:
+        raise ValueError('The enlarged sprites leave no room for horizontal movement')
+    return left, right
+
+
+def character_position(player):
+    """재생 시간으로 위치도 계산하므로 자동 정지/SPACE/R과 동기화된다."""
+    action = player.animation
+    frame = action.frames[player.frame_index]
+    elapsed = min(player.elapsed, play_seconds(action))
+    cycle = elapsed / action.cycle_seconds
+    phase = cycle % 1.0
+    if action.name == 'attack':
+        # 준비 자세에서는 멈추고, 베기 구간에만 앞으로 돌진한다.
+        strike = min(1.0, max(0.0, (phase - 0.25) / 0.5))
+        distance = ATTACK_STEP_PIXELS * (math.floor(cycle) + strike)
+    else:
+        distance = MOVEMENT_SPEEDS.get(action.name, 100.0) * elapsed
+    left, right = movement_bounds(player.animations)
+    x = left + distance % (right - left)
+    y = FLOOR_Y
+    if action.name == 'jump' and not player.resting:
+        # 첫 준비 포즈와 마지막 착지/회복 포즈는 지면에 두고 중간에 포물선 점프한다.
+        takeoff, landing = 1 / len(action.frames), (len(action.frames) - 2) / len(action.frames)
+        airborne = min(1.0, max(0.0, (phase - takeoff) / (landing - takeoff)))
+        available = max(0.0, WINDOW_HEIGHT - 122 - FLOOR_Y - frame.height * display_scale(frame))
+        y += available * 4 * airborne * (1 - airborne)
+    return x, y
 
 
 class Playback:
@@ -210,15 +241,14 @@ def draw_sequence(p, fonts, player):
                       f'NEXT IN {player.rest_remaining:.2f}s', (245, 199, 111))
 
 
-def draw_bounds(p, fonts, sheet, frame, scale):
-    left = WINDOW_WIDTH / 2 - frame.pivot_x * scale
-    baseline = frame_baseline(frame)
+def draw_bounds(p, fonts, sheet, frame, scale, x, baseline):
+    left = x - frame.pivot_x * scale
     bottom = baseline - (frame.height - frame.pivot_y) * scale
     p.draw_rectangle(left, bottom, left + frame.width * scale,
                      bottom + frame.height * scale, 245, 199, 111)
-    p.draw_rectangle(WINDOW_WIDTH / 2 - 3, baseline - 3,
-                     WINDOW_WIDTH / 2 + 3, baseline + 3, 110, 235, 207, filled=True)
-    fonts[1].draw(42, 112, f'SOURCE {frame.width}x{frame.height}   SCALE {scale:.2f}x', (245, 199, 111))
+    p.draw_rectangle(x - 3, baseline - 3,
+                     x + 3, baseline + 3, 110, 235, 207, filled=True)
+    fonts[1].draw(42, 112, f'SOURCE {frame.width}x{frame.height}   SCALE {scale:.2f}x   X {x:.0f} Y {baseline:.0f}', (245, 199, 111))
 
 
 def capture_canvas(p, path):
@@ -278,9 +308,10 @@ def run_viewer(smoke_seconds=None, screenshot=None):
             draw_hud(p, fonts, player, suspended)
             draw_sequence(p, fonts, player)
             frame = player.animation.frames[player.frame_index]
-            draw_frame(sheet, frame, WINDOW_WIDTH / 2, frame_baseline(frame), display_scale(frame))
+            x, y = character_position(player)
+            draw_frame(sheet, frame, x, y, display_scale(frame))
             if show_bounds:
-                draw_bounds(p, fonts, sheet, frame, display_scale(frame))
+                draw_bounds(p, fonts, sheet, frame, display_scale(frame), x, y)
             if screenshot and not captured:
                 capture_canvas(p, screenshot)
                 captured = True
