@@ -106,6 +106,28 @@ def display_scale(frame):
     return scale
 
 
+class Playback:
+    def __init__(self, animations):
+        if not animations:
+            raise ValueError('Playback needs at least one animation')
+        self.animations = animations
+        self.animation_index = 0
+        self.elapsed = 0.0
+
+    @property
+    def animation(self):
+        return self.animations[self.animation_index]
+
+    @property
+    def frame_index(self):
+        return int(self.elapsed / self.animation.frame_seconds) % len(self.animation.frames)
+
+    def update(self, seconds):
+        if not math.isfinite(seconds) or seconds < 0:
+            raise ValueError('Elapsed time must be finite and nonnegative')
+        self.elapsed += seconds
+
+
 def main():
     import pico2d as p
     p.open_canvas(960, 640)
