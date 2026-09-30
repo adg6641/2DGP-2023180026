@@ -182,6 +182,23 @@ def draw_hud(p, fonts, player, suspended):
     small.draw(28, 29, 'SPACE pause/resume    R restart    B frame bounds    ESC exit', muted)
 
 
+def draw_sequence(p, fonts, player):
+    for index, action in enumerate(player.animations):
+        x = 585 + index * 91
+        color = (110, 235, 207) if index == player.animation_index else (83, 103, 128)
+        p.draw_rectangle(x, WINDOW_HEIGHT - 73, x + 77, WINDOW_HEIGHT - 70, *color, filled=True)
+        fonts[1].draw(x, WINDOW_HEIGHT - 50, action.label.upper(), color)
+    duration = play_seconds(player.animation)
+    progress = min(1.0, player.elapsed / duration)
+    p.draw_rectangle(28, 53, WINDOW_WIDTH - 29, 55, 46, 60, 81, filled=True)
+    if progress > 0:
+        p.draw_rectangle(28, 53, 28 + round((WINDOW_WIDTH - 57) * progress), 55,
+                         110, 235, 207, filled=True)
+    if player.resting:
+        fonts[1].draw(WINDOW_WIDTH - 240, WINDOW_HEIGHT - 96,
+                      f'NEXT IN {player.rest_remaining:.2f}s', (245, 199, 111))
+
+
 def run_viewer():
     import pico2d as p
     data, animations = load_manifest()
@@ -212,6 +229,7 @@ def run_viewer():
             p.clear_canvas()
             draw_backdrop(p)
             draw_hud(p, fonts, player, suspended)
+            draw_sequence(p, fonts, player)
             frame = player.animation.frames[player.frame_index]
             draw_frame(sheet, frame, WINDOW_WIDTH / 2, FLOOR_Y, display_scale(frame))
             p.update_canvas()
