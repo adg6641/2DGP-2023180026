@@ -90,7 +90,10 @@ def clip_rectangle(frame, atlas_height):
 
 
 def draw_frame(sheet, frame, x, y, scale=1.0):
-    sheet.clip_draw(*clip_rectangle(frame, sheet.h), x, y,
+    # pivot은 크롭된 프레임 내부의 발밑 중심이다. 크기가 바뀌어도 중심이 유지된다.
+    center_x = x + (frame.width / 2 - frame.pivot_x) * scale
+    center_y = y + (frame.pivot_y - frame.height / 2) * scale
+    sheet.clip_draw(*clip_rectangle(frame, sheet.h), center_x, center_y,
                     round(frame.width * scale), round(frame.height * scale))
 
 
