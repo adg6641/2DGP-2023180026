@@ -84,6 +84,8 @@ class RubricTests(unittest.TestCase):
                 self.assertLessEqual(left + frame.width * scale, viewer.WINDOW_WIDTH - 24)
                 self.assertGreaterEqual(baseline, viewer.FLOOR_Y)
                 self.assertLessEqual(baseline + frame.height * scale, viewer.WINDOW_HEIGHT - 122 + 1e-6)
+                if frame.offset_y == 0:
+                    self.assertAlmostEqual(baseline + frame.height * scale / 2, viewer.WINDOW_HEIGHT / 2)
 
     def test_clip_coordinates_use_bottom_origin(self):
         frame = viewer.Frame(20, 30, 60, 80, 30, 80)

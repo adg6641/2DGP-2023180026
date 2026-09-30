@@ -12,7 +12,8 @@ WINDOW_WIDTH = 960
 WINDOW_HEIGHT = 640
 REPEAT_COUNT = 5
 REST_SECONDS = 1.0
-FLOOR_Y = 88
+# 높이 53%로 확대된 캐릭터의 중심이 화면 중앙에 오도록 발밑 기준을 둔다.
+FLOOR_Y = WINDOW_HEIGHT * (1 - 0.53) / 2
 
 
 @dataclass(frozen=True)
