@@ -13,7 +13,7 @@ for x in range(0, 800, 5):
     character.clip_composite_draw(
         frame * 100, 0, # left, bottom
         100, 100, # width, height
-        0, 'h', # rotation, scale
+        math.pi/4,'h', # rotation, scale
         x, 90, # destination x, y
         200, 200 # width, height
     )
