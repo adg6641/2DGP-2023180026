@@ -120,7 +120,17 @@ class Playback:
 
     @property
     def frame_index(self):
+        if self.resting:
+            return len(self.animation.frames) - 1
         return int(self.elapsed / self.animation.frame_seconds) % len(self.animation.frames)
+
+    @property
+    def resting(self):
+        return self.elapsed >= play_seconds(self.animation)
+
+    @property
+    def rest_remaining(self):
+        return max(0.0, play_seconds(self.animation) + REST_SECONDS - self.elapsed)
 
     @property
     def completed_repeats(self):
