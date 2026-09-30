@@ -71,6 +71,18 @@ def validate_manifest(data, animations):
                 raise ValueError('Frame pivot must lie inside its rectangle')
 
 
+def load_sheet(p, data):
+    path = BASE_DIR / 'assets' / data['image']
+    if path.parent.resolve() != (BASE_DIR / 'assets').resolve():
+        raise ValueError('Atlas image must be inside assets')
+    if not path.is_file():
+        raise FileNotFoundError(f'Sprite atlas not found: {path}')
+    sheet = p.load_image(str(path))
+    if [sheet.w, sheet.h] != data['size']:
+        raise ValueError('Atlas image dimensions do not match the manifest')
+    return sheet
+
+
 def main():
     import pico2d as p
     p.open_canvas(960, 640)
