@@ -150,6 +150,38 @@ def play_seconds(animation):
     return animation.cycle_seconds * REPEAT_COUNT
 
 
+def load_ui_fonts(p):
+    import os
+    candidates = [
+        Path(os.environ.get('WINDIR', 'C:/Windows')) / 'Fonts' / 'consola.ttf',
+        Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
+        Path('/System/Library/Fonts/Monaco.ttf'),
+    ]
+    for path in candidates:
+        if path.is_file():
+            return p.load_font(str(path), 27), p.load_font(str(path), 16)
+    raise FileNotFoundError('A UI font is required (Consolas or DejaVu Sans)')
+
+
+def draw_backdrop(p):
+    p.draw_rectangle(0, 0, WINDOW_WIDTH - 1, WINDOW_HEIGHT - 1, 15, 20, 32, filled=True)
+    p.draw_rectangle(24, 63, WINDOW_WIDTH - 25, WINDOW_HEIGHT - 116, 23, 31, 47, filled=True)
+    p.draw_rectangle(24, FLOOR_Y - 8, WINDOW_WIDTH - 25, FLOOR_Y - 7, 66, 90, 110, filled=True)
+
+
+def draw_hud(p, fonts, player, suspended):
+    title, small = fonts
+    mint, muted = (110, 235, 207), (160, 177, 198)
+    title.draw(28, WINDOW_HEIGHT - 35, 'SPRITE / MOTION LAB', mint)
+    small.draw(28, WINDOW_HEIGHT - 67, 'DRILL 08  |  AI PIXEL ART  |  IRREGULAR ATLAS', muted)
+    action = player.animation
+    status = 'PAUSED' if suspended else ('REST 1s' if player.resting else 'PLAYING')
+    repeat = REPEAT_COUNT if player.resting else player.completed_repeats + 1
+    small.draw(28, WINDOW_HEIGHT - 96,
+               f'{action.label.upper()}   {status}   CYCLE {repeat}/{REPEAT_COUNT}   FRAME {player.frame_index + 1}/{len(action.frames)}', mint)
+    small.draw(28, 29, 'SPACE pause/resume    R restart    B frame bounds    ESC exit', muted)
+
+
 def run_viewer():
     import pico2d as p
     data, animations = load_manifest()
@@ -157,6 +189,7 @@ def run_viewer():
     p.open_canvas(WINDOW_WIDTH, WINDOW_HEIGHT)
     try:
         sheet = load_sheet(p, data)
+        fonts = load_ui_fonts(p)
         player = Playback(animations)
         running = True
         suspended = False
@@ -177,6 +210,8 @@ def run_viewer():
             if not running:
                 break
             p.clear_canvas()
+            draw_backdrop(p)
+            draw_hud(p, fonts, player, suspended)
             frame = player.animation.frames[player.frame_index]
             draw_frame(sheet, frame, WINDOW_WIDTH / 2, FLOOR_Y, display_scale(frame))
             p.update_canvas()
