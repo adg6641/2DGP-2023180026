@@ -140,6 +140,10 @@ class Playback:
         if not math.isfinite(seconds) or seconds < 0:
             raise ValueError('Elapsed time must be finite and nonnegative')
         self.elapsed += seconds
+        # 큰 시간 간격에서도 나머지 시간을 버리지 않고 다음 동작으로 전달한다.
+        while self.elapsed >= play_seconds(self.animation) + REST_SECONDS:
+            self.elapsed -= play_seconds(self.animation) + REST_SECONDS
+            self.animation_index = (self.animation_index + 1) % len(self.animations)
 
 
 def play_seconds(animation):
