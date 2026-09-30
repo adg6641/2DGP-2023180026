@@ -97,6 +97,15 @@ def draw_frame(sheet, frame, x, y, scale=1.0):
                     round(frame.width * scale), round(frame.height * scale))
 
 
+def display_scale(frame):
+    # 모든 포즈의 실제 캐릭터 높이를 화면 절반 이상으로 표시한다.
+    desired_height = WINDOW_HEIGHT * 0.53
+    scale = max(1.0, desired_height / frame.height)
+    if frame.width * scale > WINDOW_WIDTH - 96:
+        scale = (WINDOW_WIDTH - 96) / frame.width
+    return scale
+
+
 def main():
     import pico2d as p
     p.open_canvas(960, 640)
