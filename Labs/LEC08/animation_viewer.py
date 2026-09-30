@@ -171,6 +171,9 @@ def run_viewer():
                     running = False
                 elif event.type == p.SDL_KEYDOWN and event.key == p.SDLK_SPACE:
                     suspended = not suspended
+                elif event.type == p.SDL_KEYDOWN and event.key == p.SDLK_r:
+                    player = Playback(animations)
+                    suspended = False
             if not running:
                 break
             p.clear_canvas()
