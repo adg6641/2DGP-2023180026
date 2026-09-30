@@ -199,6 +199,16 @@ def draw_sequence(p, fonts, player):
                       f'NEXT IN {player.rest_remaining:.2f}s', (245, 199, 111))
 
 
+def draw_bounds(p, fonts, sheet, frame, scale):
+    left = WINDOW_WIDTH / 2 - frame.pivot_x * scale
+    bottom = FLOOR_Y - (frame.height - frame.pivot_y) * scale
+    p.draw_rectangle(left, bottom, left + frame.width * scale,
+                     bottom + frame.height * scale, 245, 199, 111)
+    p.draw_rectangle(WINDOW_WIDTH / 2 - 3, FLOOR_Y - 3,
+                     WINDOW_WIDTH / 2 + 3, FLOOR_Y + 3, 110, 235, 207, filled=True)
+    fonts[1].draw(42, 112, f'SOURCE {frame.width}x{frame.height}   SCALE {scale:.2f}x', (245, 199, 111))
+
+
 def run_viewer():
     import pico2d as p
     data, animations = load_manifest()
@@ -210,6 +220,7 @@ def run_viewer():
         player = Playback(animations)
         running = True
         suspended = False
+        show_bounds = False
         previous = time.perf_counter()
         while running:
             now = time.perf_counter()
@@ -221,6 +232,8 @@ def run_viewer():
                     running = False
                 elif event.type == p.SDL_KEYDOWN and event.key == p.SDLK_SPACE:
                     suspended = not suspended
+                elif event.type == p.SDL_KEYDOWN and event.key == p.SDLK_b:
+                    show_bounds = not show_bounds
                 elif event.type == p.SDL_KEYDOWN and event.key == p.SDLK_r:
                     player = Playback(animations)
                     suspended = False
@@ -232,6 +245,8 @@ def run_viewer():
             draw_sequence(p, fonts, player)
             frame = player.animation.frames[player.frame_index]
             draw_frame(sheet, frame, WINDOW_WIDTH / 2, FLOOR_Y, display_scale(frame))
+            if show_bounds:
+                draw_bounds(p, fonts, sheet, frame, display_scale(frame))
             p.update_canvas()
             p.delay(0.005)
     finally:
