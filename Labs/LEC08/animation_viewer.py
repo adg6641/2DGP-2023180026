@@ -15,6 +15,28 @@ REST_SECONDS = 1.0
 FLOOR_Y = 88
 
 
+@dataclass(frozen=True)
+class Frame:
+    x: int
+    y: int
+    width: int
+    height: int
+    pivot_x: float
+    pivot_y: float
+
+
+@dataclass(frozen=True)
+class Animation:
+    name: str
+    label: str
+    frame_seconds: float
+    frames: tuple[Frame, ...]
+
+    @property
+    def cycle_seconds(self):
+        return len(self.frames) * self.frame_seconds
+
+
 def main():
     import pico2d as p
     p.open_canvas(960, 640)
