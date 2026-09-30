@@ -23,6 +23,7 @@ class Frame:
     height: int
     pivot_x: float
     pivot_y: float
+    offset_y: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -69,6 +70,8 @@ def validate_manifest(data, animations):
                 raise ValueError('Frame rectangle exceeds the atlas')
             if not (0 <= frame.pivot_x <= frame.width and 0 <= frame.pivot_y <= frame.height):
                 raise ValueError('Frame pivot must lie inside its rectangle')
+            if not math.isfinite(frame.offset_y) or frame.offset_y < 0:
+                raise ValueError('Jump lift must be finite and nonnegative')
 
 
 def load_sheet(p, data):
@@ -106,6 +109,13 @@ def display_scale(frame):
     return scale
 
 
+def frame_baseline(frame):
+    # 점프 프레임은 원본 시트의 높이 차이를 살리되 상단 상태 표시 영역 안으로 제한한다.
+    scale = display_scale(frame)
+    available = WINDOW_HEIGHT - 122 - FLOOR_Y - frame.height * scale
+    return FLOOR_Y + min(frame.offset_y * scale, max(0.0, available))
+
+
 class Playback:
     def __init__(self, animations):
         if not animations:
@@ -122,11 +132,11 @@ class Playback:
     def frame_index(self):
         if self.resting:
             return len(self.animation.frames) - 1
-        return int(self.elapsed / self.animation.frame_seconds) % len(self.animation.frames)
+        return int((self.elapsed + 1e-9) / self.animation.frame_seconds) % len(self.animation.frames)
 
     @property
     def resting(self):
-        return self.elapsed >= play_seconds(self.animation)
+        return self.elapsed + 1e-9 >= play_seconds(self.animation)
 
     @property
     def rest_remaining(self):
@@ -134,15 +144,15 @@ class Playback:
 
     @property
     def completed_repeats(self):
-        return min(REPEAT_COUNT, int(self.elapsed / self.animation.cycle_seconds))
+        return min(REPEAT_COUNT, int((self.elapsed + 1e-9) / self.animation.cycle_seconds))
 
     def update(self, seconds):
         if not math.isfinite(seconds) or seconds < 0:
             raise ValueError('Elapsed time must be finite and nonnegative')
         self.elapsed += seconds
         # 큰 시간 간격에서도 나머지 시간을 버리지 않고 다음 동작으로 전달한다.
-        while self.elapsed >= play_seconds(self.animation) + REST_SECONDS:
-            self.elapsed -= play_seconds(self.animation) + REST_SECONDS
+        while self.elapsed + 1e-9 >= play_seconds(self.animation) + REST_SECONDS:
+            self.elapsed = max(0.0, self.elapsed - play_seconds(self.animation) - REST_SECONDS)
             self.animation_index = (self.animation_index + 1) % len(self.animations)
 
 
@@ -201,23 +211,24 @@ def draw_sequence(p, fonts, player):
 
 def draw_bounds(p, fonts, sheet, frame, scale):
     left = WINDOW_WIDTH / 2 - frame.pivot_x * scale
-    bottom = FLOOR_Y - (frame.height - frame.pivot_y) * scale
+    baseline = frame_baseline(frame)
+    bottom = baseline - (frame.height - frame.pivot_y) * scale
     p.draw_rectangle(left, bottom, left + frame.width * scale,
                      bottom + frame.height * scale, 245, 199, 111)
-    p.draw_rectangle(WINDOW_WIDTH / 2 - 3, FLOOR_Y - 3,
-                     WINDOW_WIDTH / 2 + 3, FLOOR_Y + 3, 110, 235, 207, filled=True)
+    p.draw_rectangle(WINDOW_WIDTH / 2 - 3, baseline - 3,
+                     WINDOW_WIDTH / 2 + 3, baseline + 3, 110, 235, 207, filled=True)
     fonts[1].draw(42, 112, f'SOURCE {frame.width}x{frame.height}   SCALE {scale:.2f}x', (245, 199, 111))
 
 
 def capture_canvas(p, path):
     # SDL 렌더러의 실제 결과를 읽어 smoke test의 시각 검증에 사용한다.
-    import ctypes
+    import pico2d.pico2d as backend
     surface = p.SDL_CreateRGBSurfaceWithFormat(0, WINDOW_WIDTH, WINDOW_HEIGHT,
                                                32, p.SDL_PIXELFORMAT_ARGB8888)
     if not surface:
         raise RuntimeError('Unable to allocate a screenshot surface')
     try:
-        result = p.SDL_RenderReadPixels(p.renderer, None, surface.contents.format.contents.format,
+        result = p.SDL_RenderReadPixels(backend.renderer, None, surface.contents.format.contents.format,
                                       surface.contents.pixels, surface.contents.pitch)
         if result != 0:
             raise RuntimeError('Unable to read the rendered canvas')
@@ -266,7 +277,7 @@ def run_viewer(smoke_seconds=None, screenshot=None):
             draw_hud(p, fonts, player, suspended)
             draw_sequence(p, fonts, player)
             frame = player.animation.frames[player.frame_index]
-            draw_frame(sheet, frame, WINDOW_WIDTH / 2, FLOOR_Y, display_scale(frame))
+            draw_frame(sheet, frame, WINDOW_WIDTH / 2, frame_baseline(frame), display_scale(frame))
             if show_bounds:
                 draw_bounds(p, fonts, sheet, frame, display_scale(frame))
             if screenshot and not captured:

@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "image": "sprite_atlas.png",
+  "size": [
+    1209,
+    798
+  ],
+  "animations": [
+    {
+      "name": "walk",
+      "label": "Walk",
+      "frame_seconds": 0.12,
+      "frames": [
+        {
+          "x": 12,
+          "y": 12,
+          "width": 110,
+          "height": 171,
+          "pivot_x": 53,
+          "pivot_y": 171,
+          "offset_y": 0
+        },
+        {
+          "x": 134,
+          "y": 12,
+          "width": 103,
+          "height": 171,
+          "pivot_x": 50,
+          "pivot_y": 171,
+          "offset_y": 0
+        },
+        {
+          "x": 249,
+          "y": 12,
+          "width": 111,
+          "height": 171,
+          "pivot_x": 53,
+          "pivot_y": 171,
+          "offset_y": 0
+        },
+        {
+          "x": 372,
+          "y": 12,
+          "width": 109,
+          "height": 171,
+          "pivot_x": 54,
+          "pivot_y": 171,
+          "offset_y": 0
+        },
+        {
+          "x": 493,
+          "y": 12,
+          "width": 106,
+          "height": 171,
+          "pivot_x": 52,
+          "pivot_y": 171,
+          "offset_y": 0
+        },
+        {
+          "x": 611,
+          "y": 12,
+          "width": 111,
+          "height": 171,
+          "pivot_x": 54,
+          "pivot_y": 171,
+          "offset_y": 0
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "label": "Run",
+      "frame_seconds": 0.085,
+      "frames": [
+        {
+          "x": 12,
+          "y": 207,
+          "width": 124,
+          "height": 159,
+          "pivot_x": 65,
+          "pivot_y": 159,
+          "offset_y": 0
+        },
+        {
+          "x": 148,
+          "y": 207,
+          "width": 140,
+          "height": 152,
+          "pivot_x": 71,
+          "pivot_y": 152,
+          "offset_y": 0
+        },
+        {
+          "x": 300,
+          "y": 207,
+          "width": 132,
+          "height": 162,
+          "pivot_x": 62,
+          "pivot_y": 162,
+          "offset_y": 0
+        },
+        {
+          "x": 444,
+          "y": 207,
+          "width": 143,
+          "height": 148,
+          "pivot_x": 73,
+          "pivot_y": 148,
+          "offset_y": 0
+        },
+        {
+          "x": 599,
+          "y": 207,
+          "width": 142,
+          "height": 147,
+          "pivot_x": 69,
+          "pivot_y": 147,
+          "offset_y": 0
+        },
+        {
+          "x": 753,
+          "y": 207,
+          "width": 139,
+          "height": 153,
+          "pivot_x": 71,
+          "pivot_y": 153,
+          "offset_y": 0
+        },
+        {
+          "x": 904,
+          "y": 207,
+          "width": 141,
+          "height": 162,
+          "pivot_x": 63,
+          "pivot_y": 162,
+          "offset_y": 0
+        },
+        {
+          "x": 1057,
+          "y": 207,
+          "width": 140,
+          "height": 148,
+          "pivot_x": 73,
+          "pivot_y": 148,
+          "offset_y": 0
+        }
+      ]
+    },
+    {
+      "name": "jump",
+      "label": "Jump",
+      "frame_seconds": 0.13,
+      "frames": [
+        {
+          "x": 12,
+          "y": 393,
+          "width": 103,
+          "height": 129,
+          "pivot_x": 55,
+          "pivot_y": 129,
+          "offset_y": 5.75
+        },
+        {
+          "x": 127,
+          "y": 393,
+          "width": 117,
+          "height": 156,
+          "pivot_x": 60,
+          "pivot_y": 156,
+          "offset_y": 6.75
+        },
+        {
+          "x": 256,
+          "y": 393,
+          "width": 96,
+          "height": 149,
+          "pivot_x": 43,
+          "pivot_y": 149,
+          "offset_y": 42.75
+        },
+        {
+          "x": 364,
+          "y": 393,
+          "width": 170,
+          "height": 160,
+          "pivot_x": 65,
+          "pivot_y": 160,
+          "offset_y": 45.75
+        },
+        {
+          "x": 546,
+          "y": 393,
+          "width": 111,
+          "height": 155,
+          "pivot_x": 61,
+          "pivot_y": 155,
+          "offset_y": 32.75
+        },
+        {
+          "x": 669,
+          "y": 393,
+          "width": 163,
+          "height": 133,
+          "pivot_x": 92,
+          "pivot_y": 133,
+          "offset_y": 5.75
+        },
+        {
+          "x": 844,
+          "y": 393,
+          "width": 105,
+          "height": 179,
+          "pivot_x": 50,
+          "pivot_y": 179,
+          "offset_y": 5.75
+        }
+      ]
+    },
+    {
+      "name": "attack",
+      "label": "Attack",
+      "frame_seconds": 0.12,
+      "frames": [
+        {
+          "x": 12,
+          "y": 596,
+          "width": 109,
+          "height": 178,
+          "pivot_x": 53,
+          "pivot_y": 178,
+          "offset_y": 0
+        },
+        {
+          "x": 133,
+          "y": 596,
+          "width": 146,
+          "height": 190,
+          "pivot_x": 85,
+          "pivot_y": 190,
+          "offset_y": 0
+        },
+        {
+          "x": 291,
+          "y": 596,
+          "width": 211,
+          "height": 184,
+          "pivot_x": 106,
+          "pivot_y": 184,
+          "offset_y": 0
+        },
+        {
+          "x": 514,
+          "y": 596,
+          "width": 187,
+          "height": 166,
+          "pivot_x": 78,
+          "pivot_y": 166,
+          "offset_y": 0
+        },
+        {
+          "x": 713,
+          "y": 596,
+          "width": 109,
+          "height": 178,
+          "pivot_x": 58,
+          "pivot_y": 178,
+          "offset_y": 0
+        }
+      ]
+    }
+  ]
+}
