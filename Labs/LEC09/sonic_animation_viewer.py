@@ -164,9 +164,14 @@ class Playback:
     def __init__(self, animations=ANIMATIONS):
         if not animations:
             raise ValueError('재생할 동작이 없습니다.')
+        for action in animations:
+            if not action.frames or not math.isfinite(action.frame_seconds) or action.frame_seconds <= TIME_EPSILON:
+                raise ValueError(f'{action.id}: 프레임과 유효한 재생 시간이 필요합니다.')
         self.animations = animations
         self.animation_index = 0
         self.elapsed = 0.0
+        self.sequence_seconds = math.fsum(
+            action.cycle_seconds * REPEAT_COUNT + REST_SECONDS for action in animations)
 
     @property
     def animation(self):
@@ -176,7 +181,7 @@ class Playback:
     def frame_index(self):
         if self.finished:
             return len(self.animation.frames) - 1
-        return int(self.elapsed / self.animation.frame_seconds) % len(self.animation.frames)
+        return int((self.elapsed + TIME_EPSILON) / self.animation.frame_seconds) % len(self.animation.frames)
 
     @property
     def play_seconds(self):
@@ -184,11 +189,11 @@ class Playback:
 
     @property
     def completed_repeats(self):
-        return min(REPEAT_COUNT, int(self.elapsed / self.animation.cycle_seconds))
+        return min(REPEAT_COUNT, int((self.elapsed + TIME_EPSILON) / self.animation.cycle_seconds))
 
     @property
     def finished(self):
-        return self.elapsed >= self.play_seconds
+        return self.elapsed + TIME_EPSILON >= self.play_seconds
 
     @property
     def resting(self):
@@ -203,10 +208,68 @@ class Playback:
         return max(0.0, self.play_seconds + REST_SECONDS - self.elapsed)
 
     def update(self, seconds):
+        if not math.isfinite(seconds) or seconds < 0:
+            raise ValueError('경과 시간은 0 이상의 유한한 값이어야 합니다.')
         self.elapsed += seconds
-        if self.elapsed + TIME_EPSILON >= self.play_seconds + REST_SECONDS:
+        # 여러 전체 순환을 넘는 지연도 동작 수에 비례하는 비용으로 처리한다.
+        if self.elapsed >= self.sequence_seconds:
+            self.elapsed %= self.sequence_seconds
+        while self.elapsed + TIME_EPSILON >= self.play_seconds + REST_SECONDS:
+            self.elapsed = max(0.0, self.elapsed - self.play_seconds - REST_SECONDS)
             self.animation_index = (self.animation_index + 1) % len(self.animations)
-            self.elapsed = 0.0
+
+
+def validate_playback():
+    """창을 열지 않고 반복·휴식·순환 경계와 시간 지연을 검증한다."""
+    for action in ANIMATIONS:
+        player = Playback((action,))
+        for repeat in range(REPEAT_COUNT):
+            player.elapsed = repeat * action.cycle_seconds
+            assert player.frame_index == 0 and player.completed_repeats == repeat
+            for index in range(len(action.frames)):
+                player.elapsed = repeat * action.cycle_seconds + index * action.frame_seconds
+                assert player.frame_index == index and not player.resting
+        player.elapsed = player.play_seconds - 1e-6
+        assert not player.resting and player.frame_index == len(action.frames) - 1
+        player.update(1e-6)
+        assert player.resting and player.completed_repeats == REPEAT_COUNT
+        assert player.frame_index == len(action.frames) - 1
+        assert math.isclose(player.rest_remaining, REST_SECONDS, abs_tol=TIME_EPSILON)
+        player.update(REST_SECONDS - 1e-6)
+        assert player.resting
+        player.update(1e-6)
+        assert player.frame_index == 0 and not player.resting
+        assert math.isclose(player.elapsed, 0, abs_tol=TIME_EPSILON)
+
+    player = Playback()
+    for index, action in enumerate(ANIMATIONS):
+        player.update(action.cycle_seconds * REPEAT_COUNT + REST_SECONDS)
+        assert player.animation_index == (index + 1) % len(ANIMATIONS)
+        assert player.frame_index == 0 and player.completed_repeats == 0
+
+    whole, split = Playback(), Playback()
+    whole.update(whole.sequence_seconds * 3 + 7.35)
+    for _ in range(100):
+        split.update((split.sequence_seconds * 3 + 7.35) / 100)
+    assert whole.animation_index == split.animation_index == 1
+    assert whole.frame_index == split.frame_index
+    assert math.isclose(whole.elapsed, split.elapsed, abs_tol=TIME_EPSILON)
+    assert math.isclose(whole.elapsed, 0.85, abs_tol=TIME_EPSILON)
+
+    single = Animation('SINGLE', '단일 포즈', (ANIMATIONS[0].frames[0],))
+    player = Playback((single,))
+    player.update(0.5)
+    assert player.resting and player.frame_index == 0 and player.completed_repeats == 5
+    player.update(1.0)
+    assert not player.resting and player.completed_repeats == 0
+    for invalid in (-1, math.nan, math.inf):
+        try:
+            player.update(invalid)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('잘못된 경과 시간이 허용되었습니다.')
+    print('시간 검증 완료: 전체 프레임, 5회 반복, 1초 휴식, 순환, 지연, 단일 포즈')
 
 
 def status_text(player):
@@ -262,15 +325,19 @@ def run_viewer(smoke_seconds=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--validate', action='store_true', help='창을 열지 않고 프레임 데이터 검증')
+    parser.add_argument('--self-test', action='store_true', help='창을 열지 않고 재생 시간 검증')
     parser.add_argument('--smoke-seconds', type=float, help='지정한 초 뒤 자동 종료')
     args = parser.parse_args()
     try:
-        if args.validate:
+        if args.validate or args.self_test:
             validate_animations(ANIMATIONS, image_dimensions())
-            for action in ANIMATIONS:
-                print(f'{action.id} {action.name}: {len(action.frames)}프레임')
-            print(f'검증 완료: {len(ANIMATIONS)}개 동작, '
-                  f'{sum(len(action.frames) for action in ANIMATIONS)}프레임')
+            if args.validate:
+                for action in ANIMATIONS:
+                    print(f'{action.id} {action.name}: {len(action.frames)}프레임')
+                print(f'검증 완료: {len(ANIMATIONS)}개 동작, '
+                      f'{sum(len(action.frames) for action in ANIMATIONS)}프레임')
+            if args.self_test:
+                validate_playback()
         else:
             run_viewer(args.smoke_seconds)
     except (OSError, ValueError, ImportError) as error:
