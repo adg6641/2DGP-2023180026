@@ -37,6 +37,22 @@ class Animation:
         return len(self.frames) * self.frame_seconds
 
 
+def frames_from_rectangles(rectangles, baseline):
+    # 행의 공통 기준선을 보존하여 원본 포즈의 상하 변화를 유지한다.
+    return tuple(Frame(x, y, w, h, w / 2, baseline - y)
+                 for x, y, w, h in rectangles)
+
+
+ANIMATIONS = (
+    Animation('A01', '걷기와 회전', frames_from_rectangles((
+        (1, 39, 29, 39), (31, 40, 26, 38), (58, 39, 28, 39),
+        (86, 40, 30, 38), (118, 40, 30, 38), (150, 40, 30, 38),
+        (182, 40, 29, 38), (211, 39, 29, 38), (240, 39, 29, 38),
+        (270, 45, 24, 32), (302, 51, 29, 26),
+    ), 78)),
+)
+
+
 def clip_rectangle(frame, image_height):
     # 데이터는 왼쪽 위 원점, pico2d의 크롭 좌표는 왼쪽 아래 원점이다.
     return frame.x, image_height - frame.y - frame.height, frame.width, frame.height
@@ -44,6 +60,10 @@ def clip_rectangle(frame, image_height):
 
 def load_sheet(p):
     return p.load_image(str(IMAGE_PATH))
+
+
+def draw_frame(sheet, frame, x=WINDOW_WIDTH / 2, y=WINDOW_HEIGHT / 2):
+    sheet.clip_draw(*clip_rectangle(frame, sheet.h), x, y)
 
 
 def event_requests_exit(event, p):
@@ -62,6 +82,7 @@ def run_viewer(smoke_seconds=None):
             if any(event_requests_exit(event, p) for event in p.get_events()):
                 break
             p.clear_canvas()
+            draw_frame(sheet, ANIMATIONS[0].frames[0])
             p.update_canvas()
             p.delay(0.005)
     finally:
