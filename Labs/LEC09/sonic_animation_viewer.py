@@ -71,6 +71,24 @@ def draw_frame(sheet, frame, x=WINDOW_WIDTH / 2, y=WINDOW_HEIGHT / 2,
                     frame.width * scale, frame.height * scale)
 
 
+class Playback:
+    def __init__(self, animations=ANIMATIONS):
+        self.animations = animations
+        self.animation_index = 0
+        self.elapsed = 0.0
+
+    @property
+    def animation(self):
+        return self.animations[self.animation_index]
+
+    @property
+    def frame_index(self):
+        return int(self.elapsed / self.animation.frame_seconds) % len(self.animation.frames)
+
+    def update(self, seconds):
+        self.elapsed += seconds
+
+
 def event_requests_exit(event, p):
     return event.type == p.SDL_QUIT or (
         event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE)
@@ -82,12 +100,16 @@ def run_viewer(smoke_seconds=None):
     p.open_canvas(WINDOW_WIDTH, WINDOW_HEIGHT)
     try:
         sheet = load_sheet(p)
-        started = time.perf_counter()
+        player = Playback()
+        previous = started = time.perf_counter()
         while smoke_seconds is None or time.perf_counter() - started < smoke_seconds:
             if any(event_requests_exit(event, p) for event in p.get_events()):
                 break
+            now = time.perf_counter()
+            player.update(now - previous)
+            previous = now
             p.clear_canvas()
-            draw_frame(sheet, ANIMATIONS[0].frames[0])
+            draw_frame(sheet, player.animation.frames[player.frame_index])
             p.update_canvas()
             p.delay(0.005)
     finally:
