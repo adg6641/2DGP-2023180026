@@ -1,5 +1,9 @@
 """소닉 스프라이트 시트의 모든 동작을 자동 재생하는 pico2d 뷰어."""
 
+import argparse
+import math
+import struct
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -100,9 +104,52 @@ def clip_rectangle(frame, image_height):
     return frame.x, image_height - frame.y - frame.height, frame.width, frame.height
 
 
+def image_dimensions(path=IMAGE_PATH):
+    if not path.is_file():
+        raise FileNotFoundError(f'스프라이트 이미지를 찾을 수 없습니다: {path}')
+    with path.open('rb') as source:
+        header = source.read(24)
+    if len(header) != 24 or header[:8] != b'\x89PNG\r\n\x1a\n' or header[12:16] != b'IHDR':
+        raise ValueError(f'올바른 PNG 이미지가 아닙니다: {path}')
+    return struct.unpack('>II', header[16:24])
+
+
+def validate_animations(animations, image_size):
+    if not animations:
+        raise ValueError('재생할 동작이 없습니다.')
+    image_width, image_height = image_size
+    if min(image_width, image_height) <= 0:
+        raise ValueError('이미지 크기는 양수여야 합니다.')
+    if len({action.id for action in animations}) != len(animations):
+        raise ValueError('동작 ID가 중복되었습니다.')
+    for action in animations:
+        if not action.id or not action.name or not action.frames:
+            raise ValueError('동작에는 ID, 이름과 프레임이 필요합니다.')
+        if not math.isfinite(action.frame_seconds) or action.frame_seconds <= TIME_EPSILON:
+            raise ValueError(f'{action.id}: 프레임 시간은 {TIME_EPSILON}초보다 커야 합니다.')
+        for index, frame in enumerate(action.frames, 1):
+            prefix = f'{action.id} 프레임 {index}'
+            if any(type(value) is not int for value in
+                   (frame.x, frame.y, frame.width, frame.height)):
+                raise ValueError(f'{prefix}: 크롭 좌표와 크기는 정수여야 합니다.')
+            if min(frame.x, frame.y) < 0 or min(frame.width, frame.height) <= 0:
+                raise ValueError(f'{prefix}: 크롭 좌표 또는 크기가 잘못되었습니다.')
+            if frame.x + frame.width > image_width or frame.y + frame.height > image_height:
+                raise ValueError(f'{prefix}: 크롭 영역이 이미지 밖에 있습니다.')
+            # 공통 행 기준선은 작은 프레임의 크롭 영역 밖에 있을 수 있다.
+            if not (math.isfinite(frame.pivot_x) and math.isfinite(frame.pivot_y)
+                    and 0 <= frame.pivot_x <= frame.width
+                    and 0 <= frame.pivot_y <= image_height):
+                raise ValueError(f'{prefix}: 정렬 기준점이 잘못되었습니다.')
+
+
 def load_sheet(p):
+    image_dimensions()
     p.SDL_SetHint(b'SDL_RENDER_SCALE_QUALITY', b'0')
-    return p.load_image(str(IMAGE_PATH))
+    sheet = p.load_image(str(IMAGE_PATH))
+    if sheet is None:
+        raise ValueError(f'스프라이트 이미지 로딩에 실패했습니다: {IMAGE_PATH}')
+    return sheet
 
 
 def draw_frame(sheet, frame, x=WINDOW_WIDTH / 2, y=WINDOW_HEIGHT / 2,
@@ -115,6 +162,8 @@ def draw_frame(sheet, frame, x=WINDOW_WIDTH / 2, y=WINDOW_HEIGHT / 2,
 
 class Playback:
     def __init__(self, animations=ANIMATIONS):
+        if not animations:
+            raise ValueError('재생할 동작이 없습니다.')
         self.animations = animations
         self.animation_index = 0
         self.elapsed = 0.0
@@ -183,12 +232,15 @@ def event_requests_exit(event, p):
 
 
 def run_viewer(smoke_seconds=None):
+    if smoke_seconds is not None and (not math.isfinite(smoke_seconds) or smoke_seconds <= 0):
+        raise ValueError('자동 종료 시간은 양의 유한한 값이어야 합니다.')
     import pico2d as p
     import pico2d.pico2d as backend
 
     p.open_canvas(WINDOW_WIDTH, WINDOW_HEIGHT)
     try:
         sheet = load_sheet(p)
+        validate_animations(ANIMATIONS, (sheet.w, sheet.h))
         player = Playback()
         previous_status = None
         previous = started = time.perf_counter()
@@ -208,8 +260,24 @@ def run_viewer(smoke_seconds=None):
 
 
 def main():
-    run_viewer()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--validate', action='store_true', help='창을 열지 않고 프레임 데이터 검증')
+    parser.add_argument('--smoke-seconds', type=float, help='지정한 초 뒤 자동 종료')
+    args = parser.parse_args()
+    try:
+        if args.validate:
+            validate_animations(ANIMATIONS, image_dimensions())
+            for action in ANIMATIONS:
+                print(f'{action.id} {action.name}: {len(action.frames)}프레임')
+            print(f'검증 완료: {len(ANIMATIONS)}개 동작, '
+                  f'{sum(len(action.frames) for action in ANIMATIONS)}프레임')
+        else:
+            run_viewer(args.smoke_seconds)
+    except (OSError, ValueError, ImportError) as error:
+        print(f'실행 오류: {error}', file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
