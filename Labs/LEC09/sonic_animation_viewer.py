@@ -83,10 +83,24 @@ class Playback:
 
     @property
     def frame_index(self):
+        if self.finished:
+            return len(self.animation.frames) - 1
         return int(self.elapsed / self.animation.frame_seconds) % len(self.animation.frames)
 
+    @property
+    def play_seconds(self):
+        return self.animation.cycle_seconds * REPEAT_COUNT
+
+    @property
+    def completed_repeats(self):
+        return min(REPEAT_COUNT, int(self.elapsed / self.animation.cycle_seconds))
+
+    @property
+    def finished(self):
+        return self.elapsed >= self.play_seconds
+
     def update(self, seconds):
-        self.elapsed += seconds
+        self.elapsed = min(self.play_seconds, self.elapsed + seconds)
 
 
 def event_requests_exit(event, p):
