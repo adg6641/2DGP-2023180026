@@ -18,6 +18,13 @@ REPEAT_COUNT = 5
 REST_SECONDS = 1.0
 FRAME_SECONDS = 0.1
 TIME_EPSILON = 1e-9
+PANEL_LEFT = 160
+PANEL_RIGHT = WINDOW_WIDTH - 160
+PANEL_BOTTOM = 200
+PANEL_TOP = WINDOW_HEIGHT - 96
+MOVEMENT_MARGIN = 24
+START_X = WINDOW_WIDTH / 2
+GROUND_Y = WINDOW_HEIGHT / 2
 
 
 @dataclass(frozen=True)
@@ -99,6 +106,84 @@ ANIMATIONS = (
 )
 
 
+@dataclass(frozen=True)
+class Motion:
+    speed: float = 0.0  # 확대된 화면의 픽셀/초
+    jump_height: float = 0.0  # 확대된 화면의 픽셀
+    frame_directions: tuple[int, ...] = ()  # 비어 있으면 원본은 오른쪽 방향
+
+
+STATIC_MOTION = Motion()
+MOTIONS = {
+    'A01': Motion(speed=100),
+    'A02': Motion(speed=220),
+    'A03': Motion(speed=300),
+    'A04': STATIC_MOTION,
+    'A05': Motion(speed=180),
+    'A06': Motion(speed=300),
+    'A07': Motion(speed=380),
+    'A08': Motion(speed=130, jump_height=80),
+    'A09': Motion(speed=200, frame_directions=(1, 1, 1, 1, -1, -1, -1, -1)),
+    'A10': STATIC_MOTION,
+}
+
+
+@dataclass(frozen=True)
+class Placement:
+    x: float
+    y: float
+    direction: int = 1
+    flip: bool = False
+
+
+def movement_bounds(animations):
+    frames = [frame for action in animations for frame in action.frames]
+    # 좌우 반전된 프레임도 동일한 안전 영역 안에 들어오게 한다.
+    extent = max(max(frame.pivot_x, frame.width - frame.pivot_x)
+                 for frame in frames) * SCALE
+    left = PANEL_LEFT + MOVEMENT_MARGIN + extent
+    right = PANEL_RIGHT - MOVEMENT_MARGIN - extent
+    if not left < START_X < right:
+        raise ValueError('확대된 프레임이 이동 관찰 영역에 들어오지 않습니다.')
+    return left, right
+
+
+def motion_distance(action, motion, seconds):
+    if not motion.frame_directions:
+        return seconds * motion.speed
+    # A09처럼 원본에서 방향이 바뀌는 동작은 프레임별 방향을 시간으로 적분한다.
+    cycles = math.floor(seconds / action.cycle_seconds)
+    remainder = seconds - cycles * action.cycle_seconds
+    signed_seconds = cycles * sum(motion.frame_directions) * action.frame_seconds
+    signed_seconds += math.fsum(
+        direction * min(action.frame_seconds, max(0.0, remainder - index * action.frame_seconds))
+        for index, direction in enumerate(motion.frame_directions))
+    return signed_seconds * motion.speed
+
+
+def character_placement(player):
+    action = player.animation
+    motion = MOTIONS.get(action.id, STATIC_MOTION)
+    if motion.speed == 0 and motion.jump_height == 0:
+        return Placement(START_X, GROUND_Y)
+    # 휴식 전체 구간에서 마지막 재생 시점의 위치·방향을 유지한다.
+    seconds = min(player.elapsed, player.play_seconds)
+    left, right = player.movement_bounds
+    width = right - left
+    phase = (START_X - left + motion_distance(action, motion, seconds)) % (2 * width)
+    if phase < width:
+        x, reflected = left + phase, 1
+    else:
+        x, reflected = right - (phase - width), -1
+    native_direction = (motion.frame_directions[player.frame_index]
+                        if motion.frame_directions else 1)
+    y = GROUND_Y
+    if motion.jump_height and not player.resting:
+        jump_phase = (seconds % action.cycle_seconds) / action.cycle_seconds
+        y += motion.jump_height * 4 * jump_phase * (1 - jump_phase)
+    return Placement(x, y, native_direction * reflected, reflected < 0)
+
+
 def clip_rectangle(frame, image_height):
     # 데이터는 왼쪽 위 원점, pico2d의 크롭 좌표는 왼쪽 아래 원점이다.
     return frame.x, image_height - frame.y - frame.height, frame.width, frame.height
@@ -127,6 +212,13 @@ def validate_animations(animations, image_size):
             raise ValueError('동작에는 ID, 이름과 프레임이 필요합니다.')
         if not math.isfinite(action.frame_seconds) or action.frame_seconds <= TIME_EPSILON:
             raise ValueError(f'{action.id}: 프레임 시간은 {TIME_EPSILON}초보다 커야 합니다.')
+        motion = MOTIONS.get(action.id, STATIC_MOTION)
+        if any(not math.isfinite(value) or value < 0
+               for value in (motion.speed, motion.jump_height)):
+            raise ValueError(f'{action.id}: 이동 속도와 점프 높이는 0 이상의 유한한 값이어야 합니다.')
+        if motion.frame_directions and (len(motion.frame_directions) != len(action.frames)
+                                       or any(value not in (-1, 1) for value in motion.frame_directions)):
+            raise ValueError(f'{action.id}: 프레임별 방향은 프레임 수와 일치하는 -1 또는 1이어야 합니다.')
         for index, frame in enumerate(action.frames, 1):
             prefix = f'{action.id} 프레임 {index}'
             if any(type(value) is not int for value in
@@ -158,22 +250,22 @@ def load_sheet(p):
 def draw_backdrop(p):
     p.draw_rectangle(0, 0, WINDOW_WIDTH - 1, WINDOW_HEIGHT - 1,
                      229, 237, 246, filled=True)
-    p.draw_rectangle(160, 200, WINDOW_WIDTH - 160, WINDOW_HEIGHT - 160,
+    p.draw_rectangle(PANEL_LEFT, PANEL_BOTTOM, PANEL_RIGHT, PANEL_TOP,
                      247, 250, 253, filled=True)
-    p.draw_rectangle(160, 200, WINDOW_WIDTH - 160, WINDOW_HEIGHT - 160,
+    p.draw_rectangle(PANEL_LEFT, PANEL_BOTTOM, PANEL_RIGHT, PANEL_TOP,
                      187, 203, 221)
     # 정렬 기준선은 포즈 변화와 휴식 중 위치 고정을 관찰하는 데 사용한다.
-    p.draw_rectangle(WINDOW_WIDTH / 2 - 160, WINDOW_HEIGHT / 2 - 1,
-                     WINDOW_WIDTH / 2 + 160, WINDOW_HEIGHT / 2,
+    p.draw_rectangle(PANEL_LEFT + MOVEMENT_MARGIN, GROUND_Y - 1,
+                     PANEL_RIGHT - MOVEMENT_MARGIN, GROUND_Y,
                      210, 223, 237, filled=True)
 
 
-def draw_frame(sheet, frame, x=WINDOW_WIDTH / 2, y=WINDOW_HEIGHT / 2,
-               scale=SCALE):
-    center_x = x + (frame.width / 2 - frame.pivot_x) * scale
+def draw_frame(sheet, frame, x=START_X, y=GROUND_Y, scale=SCALE, flip=False):
+    pivot_x = frame.width - frame.pivot_x if flip else frame.pivot_x
+    center_x = x + (frame.width / 2 - pivot_x) * scale
     center_y = y + (frame.pivot_y - frame.height / 2) * scale
-    sheet.clip_draw(*clip_rectangle(frame, sheet.h), center_x, center_y,
-                    frame.width * scale, frame.height * scale)
+    sheet.clip_composite_draw(*clip_rectangle(frame, sheet.h), 0, 'h' if flip else '',
+                              center_x, center_y, frame.width * scale, frame.height * scale)
 
 
 class Playback:
@@ -186,6 +278,7 @@ class Playback:
         self.animations = animations
         self.animation_index = 0
         self.elapsed = 0.0
+        self.movement_bounds = movement_bounds(animations)
         self.sequence_seconds = math.fsum(
             action.cycle_seconds * REPEAT_COUNT + REST_SECONDS for action in animations)
 
@@ -292,8 +385,11 @@ def status_text(player):
     action = player.animation
     repeat = REPEAT_COUNT if player.resting else player.completed_repeats + 1
     state = f'휴식 {player.rest_remaining:.2f}초' if player.resting else '재생'
+    placement = character_placement(player)
+    direction = '오른쪽' if placement.direction > 0 else '왼쪽'
     return (f'{action.id} {action.name} | 프레임 {player.frame_index + 1}/{len(action.frames)}'
-            f' | 반복 {repeat}/{REPEAT_COUNT} | {state}')
+            f' | 반복 {repeat}/{REPEAT_COUNT} | {state}'
+            f' | 위치 ({placement.x:.0f}, {placement.y:.0f}) {direction}')
 
 
 def report_status(player, p, window, previous_key):
@@ -332,7 +428,9 @@ def run_viewer(smoke_seconds=None):
             previous_status = report_status(player, p, backend.window, previous_status)
             p.clear_canvas()
             draw_backdrop(p)
-            draw_frame(sheet, player.animation.frames[player.frame_index])
+            placement = character_placement(player)
+            draw_frame(sheet, player.animation.frames[player.frame_index],
+                       placement.x, placement.y, flip=placement.flip)
             p.update_canvas()
             p.delay(0.005)
     finally:
