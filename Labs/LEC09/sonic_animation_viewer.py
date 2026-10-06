@@ -59,11 +59,16 @@ def clip_rectangle(frame, image_height):
 
 
 def load_sheet(p):
+    p.SDL_SetHint(b'SDL_RENDER_SCALE_QUALITY', b'0')
     return p.load_image(str(IMAGE_PATH))
 
 
-def draw_frame(sheet, frame, x=WINDOW_WIDTH / 2, y=WINDOW_HEIGHT / 2):
-    sheet.clip_draw(*clip_rectangle(frame, sheet.h), x, y)
+def draw_frame(sheet, frame, x=WINDOW_WIDTH / 2, y=WINDOW_HEIGHT / 2,
+               scale=SCALE):
+    center_x = x + (frame.width / 2 - frame.pivot_x) * scale
+    center_y = y + (frame.pivot_y - frame.height / 2) * scale
+    sheet.clip_draw(*clip_rectangle(frame, sheet.h), center_x, center_y,
+                    frame.width * scale, frame.height * scale)
 
 
 def event_requests_exit(event, p):
