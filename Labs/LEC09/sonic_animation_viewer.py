@@ -10,6 +10,11 @@ REST_SECONDS = 1.0
 FRAME_SECONDS = 0.1
 
 
+def event_requests_exit(event, p):
+    return event.type == p.SDL_QUIT or (
+        event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE)
+
+
 def run_viewer(smoke_seconds=None):
     import pico2d as p
 
@@ -17,6 +22,8 @@ def run_viewer(smoke_seconds=None):
     try:
         started = time.perf_counter()
         while smoke_seconds is None or time.perf_counter() - started < smoke_seconds:
+            if any(event_requests_exit(event, p) for event in p.get_events()):
+                break
             p.clear_canvas()
             p.update_canvas()
             p.delay(0.005)
