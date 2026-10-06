@@ -144,12 +144,28 @@ def validate_animations(animations, image_size):
 
 
 def load_sheet(p):
-    image_dimensions()
+    image_dimensions(IMAGE_PATH)
     p.SDL_SetHint(b'SDL_RENDER_SCALE_QUALITY', b'0')
-    sheet = p.load_image(str(IMAGE_PATH))
+    try:
+        sheet = p.load_image(str(IMAGE_PATH))
+    except (OSError, ValueError) as error:
+        raise ValueError(f'스프라이트 PNG 로딩에 실패했습니다: {IMAGE_PATH}') from error
     if sheet is None:
         raise ValueError(f'스프라이트 이미지 로딩에 실패했습니다: {IMAGE_PATH}')
     return sheet
+
+
+def draw_backdrop(p):
+    p.draw_rectangle(0, 0, WINDOW_WIDTH - 1, WINDOW_HEIGHT - 1,
+                     229, 237, 246, filled=True)
+    p.draw_rectangle(160, 200, WINDOW_WIDTH - 160, WINDOW_HEIGHT - 160,
+                     247, 250, 253, filled=True)
+    p.draw_rectangle(160, 200, WINDOW_WIDTH - 160, WINDOW_HEIGHT - 160,
+                     187, 203, 221)
+    # 정렬 기준선은 포즈 변화와 휴식 중 위치 고정을 관찰하는 데 사용한다.
+    p.draw_rectangle(WINDOW_WIDTH / 2 - 160, WINDOW_HEIGHT / 2 - 1,
+                     WINDOW_WIDTH / 2 + 160, WINDOW_HEIGHT / 2,
+                     210, 223, 237, filled=True)
 
 
 def draw_frame(sheet, frame, x=WINDOW_WIDTH / 2, y=WINDOW_HEIGHT / 2,
@@ -315,6 +331,7 @@ def run_viewer(smoke_seconds=None):
             previous = now
             previous_status = report_status(player, p, backend.window, previous_status)
             p.clear_canvas()
+            draw_backdrop(p)
             draw_frame(sheet, player.animation.frames[player.frame_index])
             p.update_canvas()
             p.delay(0.005)
