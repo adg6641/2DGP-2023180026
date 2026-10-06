@@ -1,6 +1,10 @@
 """소닉 스프라이트 시트의 모든 동작을 자동 재생하는 pico2d 뷰어."""
 
 import time
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+IMAGE_PATH = BASE_DIR / 'sonic-sprite.png'
 
 WINDOW_WIDTH = 1200
 WINDOW_HEIGHT = 800
@@ -8,6 +12,10 @@ SCALE = 4
 REPEAT_COUNT = 5
 REST_SECONDS = 1.0
 FRAME_SECONDS = 0.1
+
+
+def load_sheet(p):
+    return p.load_image(str(IMAGE_PATH))
 
 
 def event_requests_exit(event, p):
@@ -20,6 +28,7 @@ def run_viewer(smoke_seconds=None):
 
     p.open_canvas(WINDOW_WIDTH, WINDOW_HEIGHT)
     try:
+        sheet = load_sheet(p)
         started = time.perf_counter()
         while smoke_seconds is None or time.perf_counter() - started < smoke_seconds:
             if any(event_requests_exit(event, p) for event in p.get_events()):
