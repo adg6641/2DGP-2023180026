@@ -381,6 +381,86 @@ def validate_playback():
     print('시간 검증 완료: 전체 프레임, 5회 반복, 1초 휴식, 순환, 지연, 단일 포즈')
 
 
+def validate_movement():
+    """이동·반사·방향·점프·휴식과 프레임 속도 독립성을 검증한다."""
+    moving = {'A01', 'A02', 'A03', 'A05', 'A06', 'A07', 'A08', 'A09'}
+    for index, action in enumerate(ANIMATIONS):
+        player = Playback()
+        player.animation_index = index
+        start = character_placement(player)
+        player.update(0.04)
+        assert player.frame_index == 0
+        position = character_placement(player)
+        if action.id in moving:
+            assert position.x > start.x
+        else:
+            assert position == start == Placement(START_X, GROUND_Y)
+
+        # 모든 동작의 전체 재생 구간에서 반전된 프레임과 점프도 잘리지 않는다.
+        for sample in range(201):
+            player.elapsed = player.play_seconds * sample / 200
+            position = character_placement(player)
+            frame = action.frames[player.frame_index]
+            pivot_x = frame.width - frame.pivot_x if position.flip else frame.pivot_x
+            left = position.x - pivot_x * SCALE
+            right = left + frame.width * SCALE
+            top = position.y + frame.pivot_y * SCALE
+            bottom = top - frame.height * SCALE
+            assert PANEL_LEFT <= left <= right <= PANEL_RIGHT
+            assert PANEL_BOTTOM <= bottom <= top <= PANEL_TOP
+        player.elapsed = player.play_seconds
+        final = character_placement(player)
+        player.update(0.99)
+        assert player.resting and character_placement(player) == final
+        player.update(0.01)
+        assert player.frame_index == 0
+        assert character_placement(player) == Placement(START_X, GROUND_Y)
+
+    player = Playback()
+    player.animation_index = 1  # 달리기: 오른쪽 경계와 왼쪽 경계에서 각각 반사
+    left, right = player.movement_bounds
+    speed = MOTIONS['A02'].speed
+    hit_right = (right - START_X) / speed
+    hit_left = hit_right + (right - left) / speed
+    for boundary_time, expected_direction in ((hit_right, -1), (hit_left, 1)):
+        player.elapsed = boundary_time - 1e-6
+        before = character_placement(player)
+        player.elapsed = boundary_time + 1e-6
+        after = character_placement(player)
+        assert before.direction == -expected_direction and after.direction == expected_direction
+        assert after.flip == (expected_direction < 0)
+        assert abs(before.x - after.x) < 1e-6
+
+    player.animation_index = 8  # 원본 A09의 오른쪽→왼쪽 방향 전환
+    player.elapsed = 0.2
+    before = character_placement(player)
+    player.elapsed = 0.6
+    after = character_placement(player)
+    assert before.direction == 1 and after.direction == -1
+    assert not before.flip and not after.flip
+    assert math.isclose(before.x, after.x, abs_tol=TIME_EPSILON)
+    player.elapsed = player.animation.cycle_seconds
+    assert math.isclose(character_placement(player).x, START_X, abs_tol=TIME_EPSILON)
+
+    player.animation_index = 7
+    player.elapsed = player.animation.cycle_seconds / 2
+    assert math.isclose(character_placement(player).y, GROUND_Y + MOTIONS['A08'].jump_height)
+    player.elapsed = player.animation.cycle_seconds
+    assert math.isclose(character_placement(player).y, GROUND_Y)
+    player.elapsed = player.play_seconds
+    assert character_placement(player).y == GROUND_Y
+
+    whole, split = Playback(), Playback()
+    whole.update(48 * 3 + 7.35)
+    for _ in range(100):
+        split.update((48 * 3 + 7.35) / 100)
+    a, b = character_placement(whole), character_placement(split)
+    assert math.isclose(a.x, b.x, abs_tol=TIME_EPSILON)
+    assert math.isclose(a.y, b.y, abs_tol=TIME_EPSILON)
+    assert (a.direction, a.flip) == (b.direction, b.flip)
+    print('이동 검증 완료: 8개 이동, 2개 제자리, 경계·반전, 방향 전환, 점프, 휴식, 지연')
+
+
 def status_text(player):
     action = player.animation
     repeat = REPEAT_COUNT if player.resting else player.completed_repeats + 1
@@ -440,7 +520,7 @@ def run_viewer(smoke_seconds=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--validate', action='store_true', help='창을 열지 않고 프레임 데이터 검증')
-    parser.add_argument('--self-test', action='store_true', help='창을 열지 않고 재생 시간 검증')
+    parser.add_argument('--self-test', action='store_true', help='창을 열지 않고 재생 시간과 이동 검증')
     parser.add_argument('--smoke-seconds', type=float, help='지정한 초 뒤 자동 종료')
     args = parser.parse_args()
     try:
@@ -453,6 +533,7 @@ def main():
                       f'{sum(len(action.frames) for action in ANIMATIONS)}프레임')
             if args.self_test:
                 validate_playback()
+                validate_movement()
         else:
             run_viewer(args.smoke_seconds)
     except (OSError, ValueError, ImportError) as error:
