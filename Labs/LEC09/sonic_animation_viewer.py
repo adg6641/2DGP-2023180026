@@ -18,10 +18,10 @@ REPEAT_COUNT = 5
 REST_SECONDS = 1.0
 FRAME_SECONDS = 0.1
 TIME_EPSILON = 1e-9
-PANEL_LEFT = 160
-PANEL_RIGHT = WINDOW_WIDTH - 160
-PANEL_BOTTOM = 200
-PANEL_TOP = WINDOW_HEIGHT - 96
+VIEW_LEFT = 160
+VIEW_RIGHT = WINDOW_WIDTH - 160
+VIEW_BOTTOM = 200
+VIEW_TOP = WINDOW_HEIGHT - 24
 MOVEMENT_MARGIN = 24
 START_X = WINDOW_WIDTH / 2
 GROUND_Y = WINDOW_HEIGHT / 2
@@ -56,7 +56,7 @@ def frames_from_rectangles(rectangles, baseline):
 
 
 ANIMATIONS = (
-    Animation('A01', '걷기와 회전', frames_from_rectangles((
+    Animation('A01', '제자리 동작', frames_from_rectangles((
         (1, 39, 29, 39), (31, 40, 26, 38), (58, 39, 28, 39),
         (86, 40, 30, 38), (118, 40, 30, 38), (150, 40, 30, 38),
         (182, 40, 29, 38), (211, 39, 29, 38), (240, 39, 29, 38),
@@ -68,11 +68,11 @@ ANIMATIONS = (
         (206, 79, 26, 38), (238, 80, 24, 37), (263, 80, 30, 37),
         (295, 80, 36, 37), (334, 80, 32, 36), (370, 79, 29, 38),
     ), 118)),
-    Animation('A03', '전력 질주', frames_from_rectangles((
+    Animation('A03', '제자리 발차기', frames_from_rectangles((
         (1, 124, 33, 40), (39, 124, 35, 39), (89, 125, 35, 38),
         (130, 121, 34, 42), (181, 122, 34, 41), (228, 122, 33, 40),
     ), 164)),
-    Animation('A04', '회전 진입', frames_from_rectangles((
+    Animation('A04', '이동 구르기', frames_from_rectangles((
         (1, 169, 29, 30), (35, 167, 29, 31), (67, 169, 30, 29),
         (98, 169, 31, 29), (131, 168, 29, 30), (162, 168, 29, 31),
         (193, 170, 30, 29), (230, 170, 31, 29), (268, 170, 30, 30),
@@ -89,7 +89,7 @@ ANIMATIONS = (
         (1, 283, 29, 35), (36, 283, 30, 35), (72, 286, 39, 31),
         (123, 285, 39, 32), (172, 286, 39, 31), (218, 285, 38, 32),
     ), 318)),
-    Animation('A08', '회전과 공중 포즈', frames_from_rectangles((
+    Animation('A08', '높이 점프', frames_from_rectangles((
         (1, 326, 24, 45), (31, 327, 29, 44), (65, 327, 20, 44),
         (90, 327, 25, 43), (119, 327, 25, 43), (149, 327, 20, 44),
         (184, 341, 40, 28), (232, 341, 39, 27),
@@ -115,14 +115,14 @@ class Motion:
 
 STATIC_MOTION = Motion()
 MOTIONS = {
-    'A01': Motion(speed=100),
+    'A01': STATIC_MOTION,
     'A02': Motion(speed=220),
-    'A03': Motion(speed=300),
-    'A04': STATIC_MOTION,
+    'A03': STATIC_MOTION,
+    'A04': Motion(speed=180),
     'A05': Motion(speed=180),
     'A06': Motion(speed=300),
     'A07': Motion(speed=380),
-    'A08': Motion(speed=130, jump_height=80),
+    'A08': Motion(speed=130, jump_height=180),
     'A09': Motion(speed=200, frame_directions=(1, 1, 1, 1, -1, -1, -1, -1)),
     'A10': STATIC_MOTION,
 }
@@ -141,8 +141,8 @@ def movement_bounds(animations):
     # 좌우 반전된 프레임도 동일한 안전 영역 안에 들어오게 한다.
     extent = max(max(frame.pivot_x, frame.width - frame.pivot_x)
                  for frame in frames) * SCALE
-    left = PANEL_LEFT + MOVEMENT_MARGIN + extent
-    right = PANEL_RIGHT - MOVEMENT_MARGIN - extent
+    left = VIEW_LEFT + MOVEMENT_MARGIN + extent
+    right = VIEW_RIGHT - MOVEMENT_MARGIN - extent
     if not left < START_X < right:
         raise ValueError('확대된 프레임이 이동 관찰 영역에 들어오지 않습니다.')
     return left, right
@@ -250,13 +250,13 @@ def load_sheet(p):
 def draw_backdrop(p):
     p.draw_rectangle(0, 0, WINDOW_WIDTH - 1, WINDOW_HEIGHT - 1,
                      229, 237, 246, filled=True)
-    p.draw_rectangle(PANEL_LEFT, PANEL_BOTTOM, PANEL_RIGHT, PANEL_TOP,
+    p.draw_rectangle(VIEW_LEFT, VIEW_BOTTOM, VIEW_RIGHT, VIEW_TOP,
                      247, 250, 253, filled=True)
-    p.draw_rectangle(PANEL_LEFT, PANEL_BOTTOM, PANEL_RIGHT, PANEL_TOP,
+    p.draw_rectangle(VIEW_LEFT, VIEW_BOTTOM, VIEW_RIGHT, VIEW_TOP,
                      187, 203, 221)
     # 정렬 기준선은 포즈 변화와 휴식 중 위치 고정을 관찰하는 데 사용한다.
-    p.draw_rectangle(PANEL_LEFT + MOVEMENT_MARGIN, GROUND_Y - 1,
-                     PANEL_RIGHT - MOVEMENT_MARGIN, GROUND_Y,
+    p.draw_rectangle(VIEW_LEFT + MOVEMENT_MARGIN, GROUND_Y - 1,
+                     VIEW_RIGHT - MOVEMENT_MARGIN, GROUND_Y,
                      210, 223, 237, filled=True)
 
 
@@ -383,7 +383,7 @@ def validate_playback():
 
 def validate_movement():
     """이동·반사·방향·점프·휴식과 프레임 속도 독립성을 검증한다."""
-    moving = {'A01', 'A02', 'A03', 'A05', 'A06', 'A07', 'A08', 'A09'}
+    moving = {'A02', 'A04', 'A05', 'A06', 'A07', 'A08', 'A09'}
     for index, action in enumerate(ANIMATIONS):
         player = Playback()
         player.animation_index = index
@@ -406,8 +406,8 @@ def validate_movement():
             right = left + frame.width * SCALE
             top = position.y + frame.pivot_y * SCALE
             bottom = top - frame.height * SCALE
-            assert PANEL_LEFT <= left <= right <= PANEL_RIGHT
-            assert PANEL_BOTTOM <= bottom <= top <= PANEL_TOP
+            assert VIEW_LEFT <= left <= right <= VIEW_RIGHT
+            assert VIEW_BOTTOM <= bottom <= top <= VIEW_TOP
         player.elapsed = player.play_seconds
         final = character_placement(player)
         player.update(0.99)
@@ -458,7 +458,7 @@ def validate_movement():
     assert math.isclose(a.x, b.x, abs_tol=TIME_EPSILON)
     assert math.isclose(a.y, b.y, abs_tol=TIME_EPSILON)
     assert (a.direction, a.flip) == (b.direction, b.flip)
-    print('이동 검증 완료: 8개 이동, 2개 제자리, 경계·반전, 방향 전환, 점프, 휴식, 지연')
+    print('이동 검증 완료: 7개 이동, 3개 제자리, 경계·반전, 방향 전환, 점프, 휴식, 지연')
 
 
 def status_text(player):
