@@ -2,10 +2,12 @@
 
 import argparse
 import math
+import os
 import struct
 import sys
 import time
 from dataclasses import dataclass
+from ctypes import byref, c_int
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -128,6 +130,20 @@ MOTIONS = {
 }
 
 
+ACTION_CAPTIONS = {
+    'A01': '제자리에서 자세를 바꿔요.',
+    'A02': '좌우로 달려요.',
+    'A03': '제자리에서 힘차게 발차기!',
+    'A04': '몸을 둥글게 말아 굴러가요.',
+    'A05': '공처럼 빠르게 굴러가요.',
+    'A06': '발을 빠르게 돌리며 달려요.',
+    'A07': '더 빠르게 질주해요!',
+    'A08': '높이 뛰어올라요!',
+    'A09': '방향을 바꾸며 달려요.',
+    'A10': '손을 들고 잠시 쉬어요.',
+}
+
+
 @dataclass(frozen=True)
 class Placement:
     x: float
@@ -247,17 +263,36 @@ def load_sheet(p):
     return sheet
 
 
-def draw_backdrop(p):
-    p.draw_rectangle(0, 0, WINDOW_WIDTH - 1, WINDOW_HEIGHT - 1,
-                     229, 237, 246, filled=True)
-    p.draw_rectangle(VIEW_LEFT, VIEW_BOTTOM, VIEW_RIGHT, VIEW_TOP,
-                     247, 250, 253, filled=True)
-    p.draw_rectangle(VIEW_LEFT, VIEW_BOTTOM, VIEW_RIGHT, VIEW_TOP,
-                     187, 203, 221)
-    # 정렬 기준선은 포즈 변화와 휴식 중 위치 고정을 관찰하는 데 사용한다.
-    p.draw_rectangle(VIEW_LEFT + MOVEMENT_MARGIN, GROUND_Y - 1,
-                     VIEW_RIGHT - MOVEMENT_MARGIN, GROUND_Y,
-                     210, 223, 237, filled=True)
+def load_caption_font(p):
+    # 프로젝트에 폰트 파일을 추가하지 않고 운영체제의 한글 글꼴을 사용한다.
+    windows_fonts = Path(os.environ.get('WINDIR', 'C:/Windows')) / 'Fonts'
+    candidates = (
+        windows_fonts / 'malgun.ttf',
+        windows_fonts / 'gulim.ttc',
+        Path('/System/Library/Fonts/AppleSDGothicNeo.ttc'),
+        Path('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'),
+    )
+    for path in candidates:
+        if path.is_file():
+            try:
+                return p.load_font(str(path), 28)
+            except OSError:
+                continue
+    raise FileNotFoundError('설명 문구에 사용할 시스템 한글 글꼴을 찾을 수 없습니다. '
+                            '맑은 고딕 또는 Noto Sans CJK가 필요합니다.')
+
+
+def caption_text(player):
+    text = ACTION_CAPTIONS[player.animation.id]
+    return f'{text}  ·  잠시 쉬는 중' if player.resting else text
+
+
+def draw_caption(p, font, player):
+    text = caption_text(player)
+    width, height = c_int(), c_int()
+    if p.TTF_SizeUTF8(font.font, text.encode('utf-8'), byref(width), byref(height)) != 0:
+        raise ValueError('한글 설명 문구의 크기를 계산할 수 없습니다.')
+    font.draw((WINDOW_WIDTH - width.value) / 2, 100, text, (35, 35, 45))
 
 
 def draw_frame(sheet, frame, x=START_X, y=GROUND_Y, scale=SCALE, flip=False):
@@ -493,9 +528,11 @@ def run_viewer(smoke_seconds=None):
     import pico2d.pico2d as backend
 
     p.open_canvas(WINDOW_WIDTH, WINDOW_HEIGHT)
+    caption_font = None
     try:
         sheet = load_sheet(p)
         validate_animations(ANIMATIONS, (sheet.w, sheet.h))
+        caption_font = load_caption_font(p)
         player = Playback()
         previous_status = None
         previous = started = time.perf_counter()
@@ -507,13 +544,15 @@ def run_viewer(smoke_seconds=None):
             previous = now
             previous_status = report_status(player, p, backend.window, previous_status)
             p.clear_canvas()
-            draw_backdrop(p)
             placement = character_placement(player)
             draw_frame(sheet, player.animation.frames[player.frame_index],
                        placement.x, placement.y, flip=placement.flip)
+            draw_caption(p, caption_font, player)
             p.update_canvas()
             p.delay(0.005)
     finally:
+        if caption_font is not None:
+            p.TTF_CloseFont(caption_font.font)
         p.close_canvas()
 
 
