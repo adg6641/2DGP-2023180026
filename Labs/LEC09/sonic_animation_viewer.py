@@ -13,6 +13,7 @@ SCALE = 4
 REPEAT_COUNT = 5
 REST_SECONDS = 1.0
 FRAME_SECONDS = 0.1
+TIME_EPSILON = 1e-9
 
 
 @dataclass(frozen=True)
@@ -119,7 +120,8 @@ class Playback:
 
     def update(self, seconds):
         self.elapsed += seconds
-        if self.elapsed >= self.play_seconds + REST_SECONDS:
+        if self.elapsed + TIME_EPSILON >= self.play_seconds + REST_SECONDS:
+            self.animation_index = (self.animation_index + 1) % len(self.animations)
             self.elapsed = 0.0
 
 
