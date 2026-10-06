@@ -99,8 +99,22 @@ class Playback:
     def finished(self):
         return self.elapsed >= self.play_seconds
 
+    @property
+    def resting(self):
+        return self.finished
+
+    @property
+    def state(self):
+        return 'RESTING' if self.resting else 'PLAYING'
+
+    @property
+    def rest_remaining(self):
+        return max(0.0, self.play_seconds + REST_SECONDS - self.elapsed)
+
     def update(self, seconds):
-        self.elapsed = min(self.play_seconds, self.elapsed + seconds)
+        self.elapsed += seconds
+        if self.elapsed >= self.play_seconds + REST_SECONDS:
+            self.elapsed = 0.0
 
 
 def event_requests_exit(event, p):
