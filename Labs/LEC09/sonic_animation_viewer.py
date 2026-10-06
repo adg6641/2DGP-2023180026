@@ -160,6 +160,23 @@ class Playback:
             self.elapsed = 0.0
 
 
+def status_text(player):
+    action = player.animation
+    repeat = REPEAT_COUNT if player.resting else player.completed_repeats + 1
+    state = f'휴식 {player.rest_remaining:.2f}초' if player.resting else '재생'
+    return (f'{action.id} {action.name} | 프레임 {player.frame_index + 1}/{len(action.frames)}'
+            f' | 반복 {repeat}/{REPEAT_COUNT} | {state}')
+
+
+def report_status(player, p, window, previous_key):
+    text = status_text(player)
+    p.SDL_SetWindowTitle(window, f'소닉 애니메이션 뷰어 | {text} | ESC 종료'.encode('utf-8'))
+    key = (player.animation_index, player.completed_repeats, player.state)
+    if key != previous_key:
+        print(text, flush=True)
+    return key
+
+
 def event_requests_exit(event, p):
     return event.type == p.SDL_QUIT or (
         event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE)
@@ -167,11 +184,13 @@ def event_requests_exit(event, p):
 
 def run_viewer(smoke_seconds=None):
     import pico2d as p
+    import pico2d.pico2d as backend
 
     p.open_canvas(WINDOW_WIDTH, WINDOW_HEIGHT)
     try:
         sheet = load_sheet(p)
         player = Playback()
+        previous_status = None
         previous = started = time.perf_counter()
         while smoke_seconds is None or time.perf_counter() - started < smoke_seconds:
             if any(event_requests_exit(event, p) for event in p.get_events()):
@@ -179,6 +198,7 @@ def run_viewer(smoke_seconds=None):
             now = time.perf_counter()
             player.update(now - previous)
             previous = now
+            previous_status = report_status(player, p, backend.window, previous_status)
             p.clear_canvas()
             draw_frame(sheet, player.animation.frames[player.frame_index])
             p.update_canvas()
