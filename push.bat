@@ -101,13 +101,21 @@ if not defined UPSTREAM (
   goto finish
 )
 
+echo Synchronizing with %UPSTREAM%...
+git pull --rebase --autostash
+if errorlevel 1 (
+  echo Synchronization failed. Resolve any conflicts, then run push.bat again.
+  pause
+  exit /b 1
+)
+
 for /f "tokens=1,2" %%A in ('git rev-list --left-right --count "%UPSTREAM%...HEAD"') do (
   set "BEHIND=%%A"
   set "AHEAD=%%B"
 )
 
 if "%AHEAD%"=="0" (
-  echo Nothing to push.
+  echo Nothing to push. The local branch is synchronized.
   pause
   exit /b 0
 )

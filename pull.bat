@@ -58,9 +58,9 @@ if not defined UPSTREAM (
 )
 
 echo Pulling from %UPSTREAM%...
-git pull
+git pull --rebase --autostash
 if errorlevel 1 (
-  echo Pull failed.
+  echo Pull failed. Resolve any conflicts, then run pull.bat again.
   pause
   exit /b 1
 )
