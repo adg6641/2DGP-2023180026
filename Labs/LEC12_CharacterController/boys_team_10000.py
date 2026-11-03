@@ -16,10 +16,13 @@ class Grass:
 
 
 class Boy:
+    image = None
+
     def __init__(self):
         self.x, self.y = random.randint(0, 800), 90
         self.frame = random.randint(0, 7)
-        self.image = load_image('run_animation.png')
+        if Boy.image == None:
+            Boy.image = load_image('run_animation.png')
 
     def update(self):
         self.frame = (self.frame + 1) % 8
@@ -47,7 +50,7 @@ def reset_world():
     grass = Grass()
     world.append(grass)
 
-    team = [Boy() for i in range(10)]
+    team = [Boy() for i in range(10000)]
     world += team
 
 
