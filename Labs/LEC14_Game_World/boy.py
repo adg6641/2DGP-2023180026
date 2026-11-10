@@ -4,11 +4,13 @@ from pico2d import get_canvas_width, get_time, load_image
 from sdl2 import (SDL_KEYDOWN, SDL_KEYUP, SDLK_LEFT, SDLK_RIGHT,
                   SDLK_SPACE)
 from transitions import Machine
+import game_world
+from ball import Ball
 
 
 class Boy:
     def __init__(self):
-        self.x, self.y = 400, 90
+        self.x, self.y = 400, 30
         self.frame = 0
         self.image = load_image('animation_sheet.png')
         self.idle_started_at = get_time()
@@ -28,6 +30,9 @@ class Boy:
                  'source': ['IDLE', 'SLEEP'], 'dest': 'RUN'},
                 {'trigger': 'stop_run',
                  'source': 'RUN', 'dest': 'IDLE'},
+                {'trigger': 'shoot_ball',
+                 'source': ['IDLE', 'RUN'], 'dest': None,
+                 'after': 'on_ball_shot'},
             ],
             initial='IDLE',
             auto_transitions=False,
@@ -43,11 +48,18 @@ class Boy:
     def on_enter_RUN(self):
         self.frame = 0
 
+    def on_ball_shot(self):
+        direction = 'right' if self.face_dir == 1 else 'left'
+        ball = Ball(self.x + self.face_dir * 50, self.y + 20, self.face_dir)
+        game_world.add_object(ball, 1)
+        print(f'Ball fired to the {direction}!')
+
     def handle_event(self, event):
-        if (event.type == SDL_KEYDOWN and
-                event.key == SDLK_SPACE and
-                self.state == 'SLEEP'):
-            self.wake_up()
+        if event.type == SDL_KEYDOWN and event.key == SDLK_SPACE:
+            if self.state == 'SLEEP':
+                self.wake_up()
+            elif self.state in ('IDLE', 'RUN'):
+                self.shoot_ball()
             return
 
         if (event.type not in (SDL_KEYDOWN, SDL_KEYUP) or

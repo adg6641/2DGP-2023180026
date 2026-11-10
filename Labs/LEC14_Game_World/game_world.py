@@ -1,10 +1,9 @@
-world = [[], []] # layers for game objects
+# 게임 오브젝트를 배경과 캐릭터 레이어로 나눈다.
+world = [[], []]
 
 def add_object(o, depth):
     world[depth].append(o)
 
-def add_objects(ol, depth):
-    world[depth] += ol
 
 def remove_object(o):
     for layer in world:
@@ -12,13 +11,12 @@ def remove_object(o):
             layer.remove(o)
             return
 
-    raise Exception("Object not found")
-
 
 def update():
     for layer in world:
-        for o in layer:
+        for o in layer[:]:
             o.update()
+
 
 def render():
     for layer in world:
@@ -26,3 +24,6 @@ def render():
             o.draw()
 
 
+def clear():
+    for layer in world:
+        layer.clear()
