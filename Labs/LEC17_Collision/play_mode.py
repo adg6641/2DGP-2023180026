@@ -8,6 +8,7 @@ from zombie import Zombie
 import random
 
 boy = None
+balls = []
 
 
 def handle_events():
@@ -25,13 +26,27 @@ def handle_events():
 
 
 def init():
-    global boy
+    global boy, balls
 
     boy = Boy()
-    game_world.add_oject(boy)
 
+
+    global grass
     grass = Grass()
+
+
+    balls = [Ball(random.randint(100, 1700), 60, 0) for i in range(30)]
+    game_world.add_objects(balls, 1)
+    game_world.add_oject(boy)
     game_world.add_oject(grass, 0)
+
+    # 소년과 볼 사이의 충돌 페어를 등록
+    game_world.add_collision_pair("boy:ball", boy, None)
+    game_world.add_collision_pair("ball:grass", None, grass)
+    for ball in balls:
+        game_world.add_collision_pair("boy:ball", None, ball)
+        game_world.add_collision_pair("ball:grass", ball, None)
+
 
 
 def pause():
@@ -50,6 +65,13 @@ def finish():
 
 def update():
     game_world.update()
+    game_world.handle_collision()
+    for ball in balls[:]:
+        if ball not in game_world.world[1]:
+            balls.remove(ball)
+
+
+
 
 def render():
     clear_canvas()

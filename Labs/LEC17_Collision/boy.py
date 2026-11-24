@@ -144,6 +144,7 @@ class Boy:
         ball = Ball(self.x + self.face_dir * 40, self.y + 60, self.face_dir,
                     1 if self.item == 'Ball' else 2)
         game_world.add_oject(ball)
+        game_world.add_collision_pair('ball:grass', ball, None)
 
     def pause(self):
         self.pressed_keys.clear()
@@ -182,3 +183,15 @@ class Boy:
     def draw(self):
         self.states[self.state].draw(self)
         self.font.draw(self.x - 10, self.y + 50, f'{self.ball_count:02d}', (255, 255, 0))
+        draw_rectangle(*self.get_bb())
+
+    # 소년의 충돌영역 계산
+    def get_bb(self):
+        return self.x - 20, self.y - 50, self.x + 20, self.y + 50
+
+    def handle_collision(self, group, other):
+        # 충돌 그룹 이름이 "boy:ball"이면 소년이 공과 충돌한 경우
+        if group == 'boy:ball':
+            # 소년이 공과 충돌했을 때의 처리
+            self.ball_count += 1
+            game_world.remove_object(other)
